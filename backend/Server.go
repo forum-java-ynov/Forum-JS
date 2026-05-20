@@ -1,11 +1,11 @@
-package main
+package backend
 
 import (
-	"net/http"
 	"fmt"
+	"net/http"
 )
 
-func main () {
+func Server() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "../frontend/html/index.html")
 	})
