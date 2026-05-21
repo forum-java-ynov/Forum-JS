@@ -13,6 +13,7 @@ go.mod
 *.db
 *.sqlite
 *.sqlite3
+database/database.db
 
 # MySQL
 *.sql.bak
