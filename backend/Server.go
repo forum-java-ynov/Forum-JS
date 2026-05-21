@@ -14,7 +14,7 @@ func Server() {
 		http.ServeFile(w, r, "frontend/html/index.html")
 	})
 
-	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {	
+	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "frontend/html/register.html")
 	})
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +24,7 @@ func Server() {
 	http.HandleFunc("/db/register", register)
 	http.HandleFunc("/db/login", login)
 
-	fmt.Println("http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+	fmt.Println("http://localhost:8082")
+	http.ListenAndServe(":8082", nil)
 
 }

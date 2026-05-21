@@ -6,3 +6,5 @@ services:
     environment:
       - ENV=production
       - PORT=8082
+    volumes:
+      - ./database:/app/database
