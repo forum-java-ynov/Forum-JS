@@ -7,8 +7,8 @@
     </head>
     <body>
         <h1>Register</h1>
-        <form action="/register" method="post">
-            <label for="full_name">Nom complet:</label>
+        <form onsubmit="register(event)">
+            <label for="full_name">Full Name:</label>
             <input type="text" id="full_name" name="full_name" required><br><br>
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" required><br><br>
@@ -18,6 +18,10 @@
             <input type="password" id="password" name="password" required><br><br>
             <label for="confirm_password">Confirm Password:</label>
             <input type="password" id="confirm_password" name="confirm_password" required><br><br>
+            
             <input type="submit" value="Register">
         </form>
+
+        <script src="/js/register.js"></script>
     </body>
+</html>
