@@ -1,10 +1,10 @@
 services:
   forum:
-    build: .
+    build: . # Build l'image
     ports:
-      - "8082:8082"
+      - "8082:8082" # Expose le port 8082 du conteneur
     environment:
-      - ENV=production
-      - PORT=8082
+      - ENV=production # Active le mode production dans l'app Go
+      - PORT=8082 # Port
     volumes:
-      - ./database:/app/database
+      - ./database:/app/database # Persiste la base SQLite
