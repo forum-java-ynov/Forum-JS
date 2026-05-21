@@ -3,17 +3,20 @@ package backend
 import (
 	"database/sql"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
 	"log"
-	_ "modernc.org/sqlite"
 	"os"
 	"strings"
+
+	"golang.org/x/crypto/bcrypt"
+	_ "modernc.org/sqlite"
 )
+
+var dbPath = "database/database.db"
 
 func CreateDatabase() {
 	os.MkdirAll("database", 0755)
 
-	db, err := sql.Open("sqlite", "database/database.db")
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,31 +26,30 @@ func CreateDatabase() {
 		log.Fatal(err)
 	}
 
-	log.Println("Connecté à database/database.db")
+	log.Println("Connecté à " + dbPath)
 }
 
 func CreateTables() {
-	db, err := sql.Open("sqlite", "database/database.db")
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
 	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		full_name TEXT NOT NULL,
-		username TEXT NOT NULL UNIQUE,
-		email TEXT NOT NULL UNIQUE,
-		password TEXT NOT NULL
-	);
-	`)
+    CREATE TABLE IF NOT EXISTS users (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       full_name TEXT NOT NULL,
+       username TEXT NOT NULL UNIQUE,
+       email TEXT NOT NULL UNIQUE,
+       password TEXT NOT NULL
+    );
+    `)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-// check/hash password
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	return string(bytes), err
@@ -58,42 +60,39 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-////
-
 func insertUser(fullName, username, email, password, verifPassword string) error {
-	db, err := sql.Open("sqlite", "database/database.db")
-	if err != nil {
-		return err
-	}
 	if password != verifPassword {
 		return fmt.Errorf("passwords do not match")
+	}
+
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
 	}
 	defer db.Close()
 
 	hpassword, _ := HashPassword(password)
 
 	_, err = db.Exec(`
-	INSERT INTO users (full_name, username, email, password) 
-	VALUES (?, ?, ?, ?);
-	`, fullName, username, email, hpassword)
+    INSERT INTO users (full_name, username, email, password) 
+    VALUES (?, ?, ?, ?);
+    `, fullName, username, email, hpassword)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "users.email") {
 			return fmt.Errorf("email déjà utilisé")
 		}
-
 		if strings.Contains(err.Error(), "users.username") {
 			return fmt.Errorf("username déjà utilisé")
 		}
-
 		return err
 	}
 
-	return err
+	return nil
 }
 
 func loginUser(username, password string) (bool, error) {
-	db, err := sql.Open("sqlite", "database/database.db")
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return false, err
 	}
@@ -108,7 +107,5 @@ func loginUser(username, password string) (bool, error) {
 		return false, err
 	}
 
-	match := CheckPasswordHash(password, storedPassword)
-
-	return match, nil
+	return CheckPasswordHash(password, storedPassword), nil
 }

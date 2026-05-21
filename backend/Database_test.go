@@ -42,6 +42,27 @@ func TestCreateDatabase(t *testing.T) {
 	}
 }
 
+func TestHashPassword(t *testing.T) {
+	hash, err := HashPassword("monpassword")
+	if err != nil {
+		t.Fatalf("HashPassword erreur : %v", err)
+	}
+	if hash == "monpassword" {
+		t.Error("le mot de passe ne doit pas être stocké en clair")
+	}
+}
+
+func TestCheckPasswordHash(t *testing.T) {
+	hash, _ := HashPassword("monpassword")
+
+	if !CheckPasswordHash("monpassword", hash) {
+		t.Error("aurait dû retourner true pour le bon mot de passe")
+	}
+	if CheckPasswordHash("mauvaispassword", hash) {
+		t.Error("aurait dû retourner false pour un mauvais mot de passe")
+	}
+}
+
 func TestInsertUser(t *testing.T) {
 	cleanup := setupTestDB(t)
 	defer cleanup()
