@@ -22,6 +22,7 @@ func Server() {
 
 	http.HandleFunc("/db/register", register)
 	http.HandleFunc("/db/login", login)
+	http.HandleFunc("/db/create_post", createPost)
 
 	fmt.Println("http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
