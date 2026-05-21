@@ -2,12 +2,12 @@ package backend
 
 import (
 	"database/sql"
+	"fmt"
+	"golang.org/x/crypto/bcrypt"
 	"log"
+	_ "modernc.org/sqlite"
 	"os"
 	"strings"
-	"fmt"
-
-	_ "modernc.org/sqlite"
 )
 
 func CreateDatabase() {
@@ -47,6 +47,19 @@ func CreateTables() {
 	}
 }
 
+// check/hash password
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
+}
+
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+////
+
 func insertUser(fullName, username, email, password, verifPassword string) error {
 	db, err := sql.Open("sqlite", "database/database.db")
 	if err != nil {
@@ -56,10 +69,13 @@ func insertUser(fullName, username, email, password, verifPassword string) error
 		return fmt.Errorf("passwords do not match")
 	}
 	defer db.Close()
+
+	hpassword, _ := HashPassword(password)
+
 	_, err = db.Exec(`
 	INSERT INTO users (full_name, username, email, password) 
 	VALUES (?, ?, ?, ?);
-	`, fullName, username, email, password)
+	`, fullName, username, email, hpassword)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "users.email") {
@@ -84,14 +100,15 @@ func loginUser(username, password string) (bool, error) {
 	defer db.Close()
 
 	var storedPassword string
-	err = db.QueryRow(`
-	SELECT password FROM users WHERE username = ?;
-	`, username).Scan(&storedPassword)
+	err = db.QueryRow(`SELECT password FROM users WHERE username = ?;`, username).Scan(&storedPassword)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil
 		}
 		return false, err
 	}
-	return storedPassword == password, nil
+
+	match := CheckPasswordHash(password, storedPassword)
+
+	return match, nil
 }
