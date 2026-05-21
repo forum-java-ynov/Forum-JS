@@ -15,7 +15,6 @@ WORKDIR /app
 
 COPY --from=builder /app/main .
 COPY --from=builder /app/frontend ./frontend
-COPY --from=builder /app/database ./database
 
 EXPOSE 8082
 
