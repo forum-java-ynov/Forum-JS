@@ -4,7 +4,7 @@
     box-sizing: border-box;
 }
 
-.apple-nav {
+.nav {
     background-color: rgba(29, 29, 31, 0.75);
     backdrop-filter: blur(20px);
     position: sticky;
@@ -13,7 +13,7 @@
     width: 100%;
 }
 
-.apple-nav ul {
+.nav ul {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -22,7 +22,7 @@
     gap: 4px;
 }
 
-.apple-nav ul li a {
+.nav ul li a {
     color: rgba(255, 255, 255, 0.8);
     text-decoration: none;
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -34,7 +34,7 @@
     transition: color 0.2s;
 }
 
-.apple-nav ul li a:hover {
+.nav ul li a:hover {
     color: white;
 }
 
