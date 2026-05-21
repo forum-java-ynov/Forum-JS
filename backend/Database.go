@@ -37,14 +37,25 @@ func CreateTables() {
 	defer db.Close()
 
 	_, err = db.Exec(`
-    CREATE TABLE IF NOT EXISTS users (
-       id INTEGER PRIMARY KEY AUTOINCREMENT,
-       full_name TEXT NOT NULL,
-       username TEXT NOT NULL UNIQUE,
-       email TEXT NOT NULL UNIQUE,
-       password TEXT NOT NULL
-    );
-    `)
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		full_name TEXT NOT NULL,
+		username TEXT NOT NULL UNIQUE,
+		email TEXT NOT NULL UNIQUE,
+		password TEXT NOT NULL
+	);
+	`)
+
+	_, err = db.Exec(`
+	CREATE TABLE IF NOT EXISTS posts (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		title TEXT NOT NULL,
+		content TEXT NOT NULL,
+		image_path TEXT,
+		FOREIGN KEY (id) REFERENCES users(id)
+	);
+	`)
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -108,4 +119,19 @@ func loginUser(username, password string) (bool, error) {
 	}
 
 	return CheckPasswordHash(password, storedPassword), nil
+}
+
+func addPost(username, title, content, imagePath string) {
+	db, err := sql.Open("sqlite", "database/database.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	_, err = db.Exec(`
+	INSERT INTO posts (username, title, content, image_path) 
+	VALUES (?, ?, ?, ?);
+	`, username, title, content, imagePath)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
