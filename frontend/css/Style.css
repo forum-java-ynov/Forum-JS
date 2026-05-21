@@ -72,3 +72,39 @@ body {
     flex-direction: column;
     gap: 10px;
 }
+
+#postContainer {
+    width: min(900px, calc(100% - 32px));
+    margin: 32px auto;
+    display: grid;
+    gap: 16px;
+}
+
+.show-post {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.show-post h2 {
+    margin-bottom: 8px;
+}
+
+.show-post p {
+    line-height: 1.5;
+}
+
+.show-post img {
+    width: 100%;
+    max-height: 360px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-top: 12px;
+}
+
+.empty-posts {
+    color: #666;
+    text-align: center;
+}

@@ -8,6 +8,7 @@ import (
 func Server() {
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("frontend/js"))))
 	http.Handle("/frontend/", http.StripPrefix("/frontend/", http.FileServer(http.Dir("frontend"))))
+	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
 
 	//routes
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -24,6 +25,7 @@ func Server() {
 	http.HandleFunc("/db/register", register)
 	http.HandleFunc("/db/login", login)
 	http.HandleFunc("/db/create_post", createPost)
+	http.HandleFunc("/db/posts", showPosts)
 
 	fmt.Println("http://localhost:8082")
 	http.ListenAndServe(":8082", nil)

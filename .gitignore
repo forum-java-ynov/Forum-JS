@@ -13,6 +13,7 @@ vendor/
 *.sqlite
 *.sqlite3
 database/database.db
+uploads/
 
 # MySQL
 *.sql.bak

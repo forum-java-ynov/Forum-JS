@@ -7,4 +7,5 @@ services:
       - ENV=production # Active le mode production dans l'app Go
       - PORT=8082 # Port
     volumes:
-      - ./database:/app/database # Persiste la base SQLite
+      - ./database:/app/database
+      - ./uploads:/app/uploads

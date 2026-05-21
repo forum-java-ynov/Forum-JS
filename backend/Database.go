@@ -51,8 +51,7 @@ func CreateTables() {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		title TEXT NOT NULL,
 		content TEXT NOT NULL,
-		image_path TEXT,
-		FOREIGN KEY (id) REFERENCES users(id)
+		image_path TEXT
 	);
 	`)
 
@@ -121,17 +120,45 @@ func loginUser(username, password string) (bool, error) {
 	return CheckPasswordHash(password, storedPassword), nil
 }
 
-func addPost(username, title, content, imagePath string) {
+func addPost(title, content, imagePath string) {
 	db, err := sql.Open("sqlite", "database/database.db")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 	_, err = db.Exec(`
-	INSERT INTO posts (username, title, content, image_path) 
-	VALUES (?, ?, ?, ?);
-	`, username, title, content, imagePath)
+	INSERT INTO posts (title, content, image_path) 
+	VALUES (?, ?, ?);
+	`, title, content, imagePath)
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func getPosts() ([]map[string]string, error) {
+	db, err := sql.Open("sqlite", "database/database.db")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	rows, err := db.Query(`SELECT title, content, image_path FROM posts;`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var posts []map[string]string
+	for rows.Next() {
+		var title, content, imagePath string
+		if err := rows.Scan(&title, &content, &imagePath); err != nil {
+			return nil, err
+		}
+		post := map[string]string{
+			"title":      title,
+			"content":    content,
+			"image_path": imagePath,
+		}
+		posts = append(posts, post)
+	}
+	return posts, nil
 }
