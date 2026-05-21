@@ -6,11 +6,14 @@ import (
 )
 
 func Server() {
+
+	http.Handle("/frontend/", http.StripPrefix("/frontend/", http.FileServer(http.Dir("frontend"))))
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "frontend/html/index.html")
 	})
 
-	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {	
+	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "frontend/html/register.html")
 	})
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
