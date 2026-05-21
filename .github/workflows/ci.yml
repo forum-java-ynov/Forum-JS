@@ -20,7 +20,10 @@ jobs:
           cache: false
 
       - name: Run tests
-        run: go test ./...
+        run: |
+          ls
+          cat go.mod
+          go test ./...
 
       - name: Build Docker image
         run: docker compose build
