@@ -111,6 +111,23 @@ async function loadPosts() {
                 article.appendChild(image);
             }
 
+            const likeBtn = document.createElement("button");
+
+            likeBtn.textContent = `❤️ ${post.likes}`;
+
+            likeBtn.onclick = async function () {
+                const response = await fetch(`/db/toggle_like?id=${post.id}`, {
+                    method: "POST"
+                });
+
+                if (response.ok) {
+                    loadPosts();
+                } else {
+                    alert("Erreur lors du like");
+                }
+            };
+            article.appendChild(likeBtn);
+
             const commentebutton = document.createElement("button")
             commentebutton.textContent = "Add commente"
 

@@ -35,6 +35,7 @@ func Server() {
 	http.HandleFunc("/db/delete_post", deletePostHandler)
 	http.HandleFunc("/db/create_commente", createCommente)
 	http.HandleFunc("/db/comments", showComments)
+	http.HandleFunc("/db/toggle_like", ToggleLikeHandler)
 
 	fmt.Println("http://localhost:8082")
 	http.ListenAndServe(":8082", nil)

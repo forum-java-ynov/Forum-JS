@@ -66,6 +66,26 @@ func CreateTables() {
 		FOREIGN KEY (user_id) REFERENCES users(id)
 	);
 	`)
+	_, err = db.Exec(`
+	CREATE TABLE IF NOT EXISTS post_like (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		post_id INTEGER NOT NULL,
+		user_id INTEGER NOT NULL,
+		FOREIGN KEY (post_id) REFERENCES posts(id),
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);
+	`)
+
+	_, err = db.Exec(`
+	CREATE TABLE IF NOT EXISTS comment_like (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		comments_id INTEGER NOT NULL,
+		user_id INTEGER NOT NULL,
+		FOREIGN KEY (comments_id) REFERENCES comments(id),
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);
+	`)
+
 
 	if err != nil {
 		log.Fatal(err)
@@ -153,7 +173,19 @@ func getPosts() ([]map[string]string, error) {
 		return nil, err
 	}
 	defer db.Close()
-	rows, err := db.Query(`SELECT id, title, content, image_path FROM posts;`)
+	rows, err := db.Query(`
+		SELECT 
+			posts.id,
+			posts.title,
+			posts.content,
+			posts.image_path,
+			COUNT(post_like.id) as likes
+		FROM posts
+		LEFT JOIN post_like ON posts.id = post_like.post_id
+		GROUP BY posts.id;
+	`)
+	var likes int
+
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +196,7 @@ func getPosts() ([]map[string]string, error) {
 		var id int
 		var title, content string
 		var imagePath sql.NullString
-		if err := rows.Scan(&id, &title, &content, &imagePath); err != nil {
+		if err := rows.Scan(&id, &title, &content, &imagePath, &likes); err != nil {
 			return nil, err
 		}
 		post := map[string]string{
@@ -172,6 +204,7 @@ func getPosts() ([]map[string]string, error) {
 			"title":      title,
 			"content":    content,
 			"image_path": "",
+			"likes": fmt.Sprint(likes),
 		}
 		if imagePath.Valid {
 			post["image_path"] = imagePath.String
@@ -263,3 +296,64 @@ func insertGoogleUser(name, email, googleID string) error {
 	)
 	return err
 }
+
+
+func likepost(postid string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec(
+		"INSERT INTO post_like (post_id, user_id) VALUES (?, ?)",
+		postid, 1,
+	)
+
+	return err
+}
+
+func likecomment(commentid string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec(
+		"INSERT INTO comment_like (comment_id, user_id) VALUES (?, ?)",
+		commentid, 1,
+	)
+
+	return err
+}
+
+func deletelikecomment(commentid string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec("DELETE FROM comment_like WHERE comment_id = ? AND user_id = ?;",
+		commentid, 1,
+	)
+
+	return err
+}
+
+
+func deletelikepost(postid string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec("DELETE FROM post_like WHERE post_id = ? AND user_id = ?;",
+		postid, 1,
+	)
+
+	return err
+}
+
