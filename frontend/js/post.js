@@ -75,6 +75,13 @@ async function loadPosts() {
                 article.appendChild(image);
             }
 
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "Supprimer";
+            deleteBtn.style.backgroundColor = "#ff4c4c";
+            deleteBtn.style.color = "white";
+            deleteBtn.onclick = () => deletePostAction(post.id);
+            
+            article.appendChild(deleteBtn);
             container.appendChild(article);
         });
     } catch (error) {
@@ -82,5 +89,22 @@ async function loadPosts() {
     }
 }
 
-document.addEventListener("DOMContentLoaded", loadPosts);
+async function deletePostAction(postId) {
+    if (!postId) {
+        alert("Erreur : L'ID du post est introuvable.");
+        return;
+    }
 
+    if (!confirm("Voulez-vous vraiment supprimer ce post ?")) return;
+
+    const response = await fetch(`/db/delete_post?id=${postId}`, { method: "DELETE" });
+    
+    if (response.ok) {
+        alert("Post supprimé avec succès !");
+        loadPosts();
+    } else {
+        alert("Erreur lors de la suppression du post.");
+    }
+}
+
+document.addEventListener("DOMContentLoaded", loadPosts);

@@ -141,7 +141,7 @@ func getPosts() ([]map[string]string, error) {
 		return nil, err
 	}
 	defer db.Close()
-	rows, err := db.Query(`SELECT title, content, image_path FROM posts;`)
+	rows, err := db.Query(`SELECT id, title, content, image_path FROM posts;`)
 	if err != nil {
 		return nil, err
 	}
@@ -149,11 +149,13 @@ func getPosts() ([]map[string]string, error) {
 
 	var posts []map[string]string
 	for rows.Next() {
+		var id int
 		var title, content, imagePath string
-		if err := rows.Scan(&title, &content, &imagePath); err != nil {
+		if err := rows.Scan(&id, &title, &content, &imagePath); err != nil {
 			return nil, err
 		}
 		post := map[string]string{
+			"id":         fmt.Sprint(id),
 			"title":      title,
 			"content":    content,
 			"image_path": imagePath,
@@ -161,4 +163,16 @@ func getPosts() ([]map[string]string, error) {
 		posts = append(posts, post)
 	}
 	return posts, nil
+}
+
+func deletePost(id int) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec(`
+	DELETE FROM posts WHERE id = ?;`, id)
+	return err
 }

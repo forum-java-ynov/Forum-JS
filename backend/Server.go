@@ -26,6 +26,7 @@ func Server() {
 	http.HandleFunc("/db/login", login)
 	http.HandleFunc("/db/create_post", createPost)
 	http.HandleFunc("/db/posts", showPosts)
+	http.HandleFunc("/db/delete_post", deletePostHandler)
 
 	fmt.Println("http://localhost:8082")
 	http.ListenAndServe(":8082", nil)
