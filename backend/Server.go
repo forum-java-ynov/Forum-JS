@@ -21,8 +21,8 @@ func Server() {
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "frontend/html/login.html")
 	})
-	
-	//appel db
+
+	//lien avec  db 
 	http.HandleFunc("/db/register", register)
 	http.HandleFunc("/db/login", login)
 	http.HandleFunc("/db/create_post", createPost)
