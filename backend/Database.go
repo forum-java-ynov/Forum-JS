@@ -55,6 +55,17 @@ func CreateTables() {
 	);
 	`)
 
+	_, err = db.Exec(`
+	CREATE TABLE IF NOT EXISTS comments (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		post_id INTEGER NOT NULL,
+		user_id INTEGER NOT NULL,
+		content TEXT NOT NULL,
+		FOREIGN KEY (post_id) REFERENCES posts(id),
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);
+	`)
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -141,7 +152,7 @@ func getPosts() ([]map[string]string, error) {
 		return nil, err
 	}
 	defer db.Close()
-	rows, err := db.Query(`SELECT title, content, image_path FROM posts;`)
+	rows, err := db.Query(`SELECT id, title, content, image_path FROM posts;`)
 	if err != nil {
 		return nil, err
 	}
@@ -149,16 +160,66 @@ func getPosts() ([]map[string]string, error) {
 
 	var posts []map[string]string
 	for rows.Next() {
-		var title, content, imagePath string
-		if err := rows.Scan(&title, &content, &imagePath); err != nil {
+		var id int
+		var title, content string
+		var imagePath sql.NullString
+		if err := rows.Scan(&id, &title, &content, &imagePath); err != nil {
 			return nil, err
 		}
 		post := map[string]string{
+			"id":         fmt.Sprint(id),
 			"title":      title,
 			"content":    content,
-			"image_path": imagePath,
+			"image_path": "",
+		}
+		if imagePath.Valid {
+			post["image_path"] = imagePath.String
 		}
 		posts = append(posts, post)
 	}
 	return posts, nil
+}
+
+func addCommente(postID int, content string) error {
+	db, err := sql.Open("sqlite", "database/database.db")
+	if err != nil {
+		return err
+	}
+
+	defer db.Close()
+	_, err = db.Exec(`
+	INSERT INTO comments (post_id, user_id, content) 
+	VALUES (?, ?, ?);
+	`, postID, 1, content)
+	return err
+}
+
+func getComments(postID string) ([]map[string]string, error) {
+	db, err := sql.Open("sqlite", "database/database.db")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	rows, err := db.Query(`SELECT users.username, comments.content 
+	FROM comments 
+	JOIN users ON comments.user_id = users.id 
+	WHERE comments.post_id = ?;`, postID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var comments []map[string]string
+	for rows.Next() {
+		var username, content string
+		if err := rows.Scan(&username, &content); err != nil {
+			return nil, err
+		}
+		comment := map[string]string{
+			"username": username,
+			"content":  content,
+		}
+		comments = append(comments, comment)
+	}
+	return comments, nil
 }
