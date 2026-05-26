@@ -42,7 +42,8 @@ func CreateTables() {
 		full_name TEXT NOT NULL,
 		username TEXT NOT NULL UNIQUE,
 		email TEXT NOT NULL UNIQUE,
-		password TEXT NOT NULL
+		password TEXT,
+	    google_id TEXT
 	);
 	`)
 
@@ -233,5 +234,32 @@ func deletePost(id int) error {
 
 	_, err = db.Exec(`
 	DELETE FROM posts WHERE id = ?;`, id)
+	return err
+}
+
+// google auth
+func userExistsByEmail(email string) (bool, error) {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return false, err
+	}
+	defer db.Close()
+
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", email).Scan(&count)
+	return count > 0, err
+}
+
+func insertGoogleUser(name, email, googleID string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec(
+		"INSERT INTO users (full_name, username, email, google_id) VALUES (?, ?, ?, ?)",
+		name, email, email, googleID,
+	)
 	return err
 }

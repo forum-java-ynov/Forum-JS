@@ -21,7 +21,11 @@ func Server() {
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "frontend/html/login.html")
 	})
-	
+	http.HandleFunc("/auth/logout", handleLogout)
+	http.HandleFunc("/api/me", handleMe)
+	http.HandleFunc("/auth/google/login", handleGoogleLogin)
+	http.HandleFunc("/auth/google/callback", handleGoogleCallback)
+
 	//appel db
 	http.HandleFunc("/db/register", register)
 	http.HandleFunc("/db/login", login)
