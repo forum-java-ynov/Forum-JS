@@ -54,9 +54,22 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 
 func showPosts(w http.ResponseWriter, r *http.Request) {
 	posts, err := getPosts()
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	for _, post := range posts {
+		id := post["id"]
+
+		comments, err := getComments(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Println(comments)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

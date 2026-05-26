@@ -21,12 +21,15 @@ func Server() {
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "frontend/html/login.html")
 	})
-
+	
+	//appel db
 	http.HandleFunc("/db/register", register)
 	http.HandleFunc("/db/login", login)
 	http.HandleFunc("/db/create_post", createPost)
 	http.HandleFunc("/db/posts", showPosts)
 	http.HandleFunc("/db/delete_post", deletePostHandler)
+	http.HandleFunc("/db/create_commente", createCommente)
+	http.HandleFunc("/db/comments", showComments)
 
 	fmt.Println("http://localhost:8082")
 	http.ListenAndServe(":8082", nil)

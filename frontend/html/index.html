@@ -38,8 +38,24 @@
                 </form>
             </div>
         </div>
-        <div id="postContainer"></div>
+        <div id="postContainer">
+            <div id="post" class="post">
+                
+            </div>
+        </div>
 
+        <div class="create-commente-pop" id="create-commente-pop">
+            <div id="commente-pop-up">
+                <h2>Create a Commente</h2>
+                <form id="commenteForm" onsubmit="createCommente(event)">
+                    <input type="hidden" id="post-id-commente" name="post_id">
+                    <label for="content-commente">Content:</label><br>
+                    <textarea id="content-commente" name="content" rows="4" cols="50"></textarea><br><br>
+                    <button type="submit">Publish</button>
+                </form>
+            </div>
+        </div>
+        
         <script src="../js/post.js"></script>
     </body>
 </html>
