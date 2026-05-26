@@ -66,6 +66,22 @@ async function loadComments(postId, commentsContainer) {
 
             commentElement.appendChild(username);
             commentElement.appendChild(content);
+
+            const likeBtn = document.createElement("button");
+            likeBtn.textContent = `Like ${comment.likes}`;
+            likeBtn.onclick = async function () {
+                const response = await fetch(`/db/toggle_comment_like?id=${comment.id}`, {
+                    method: "POST"
+                });
+
+                if (response.ok) {
+                    loadComments(postId, commentsContainer);
+                } else {
+                    alert("Erreur lors du like du commentaire");
+                }
+            };
+
+            commentElement.appendChild(likeBtn);
             commentsContainer.appendChild(commentElement);
         });
     } catch (error) {

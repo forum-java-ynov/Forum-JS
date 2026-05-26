@@ -36,6 +36,7 @@ func Server() {
 	http.HandleFunc("/db/create_commente", createCommente)
 	http.HandleFunc("/db/comments", showComments)
 	http.HandleFunc("/db/toggle_like", ToggleLikeHandler)
+	http.HandleFunc("/db/toggle_comment_like", ToggleCommentLikeHandler)
 
 	fmt.Println("http://localhost:8082")
 	http.ListenAndServe(":8082", nil)

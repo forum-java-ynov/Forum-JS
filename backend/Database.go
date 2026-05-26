@@ -86,7 +86,6 @@ func CreateTables() {
 	);
 	`)
 
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -204,7 +203,7 @@ func getPosts() ([]map[string]string, error) {
 			"title":      title,
 			"content":    content,
 			"image_path": "",
-			"likes": fmt.Sprint(likes),
+			"likes":      fmt.Sprint(likes),
 		}
 		if imagePath.Valid {
 			post["image_path"] = imagePath.String
@@ -234,10 +233,18 @@ func getComments(postID string) ([]map[string]string, error) {
 		return nil, err
 	}
 	defer db.Close()
-	rows, err := db.Query(`SELECT users.username, comments.content 
+	rows, err := db.Query(`
+	SELECT 
+		comments.id,
+		users.username,
+		comments.content,
+		COUNT(comment_like.id) as likes
 	FROM comments 
-	JOIN users ON comments.user_id = users.id 
-	WHERE comments.post_id = ?;`, postID)
+	JOIN users ON comments.user_id = users.id
+	LEFT JOIN comment_like ON comments.id = comment_like.comments_id
+	WHERE comments.post_id = ?
+	GROUP BY comments.id;
+	`, postID)
 	if err != nil {
 		return nil, err
 	}
@@ -245,13 +252,17 @@ func getComments(postID string) ([]map[string]string, error) {
 
 	var comments []map[string]string
 	for rows.Next() {
+		var id int
 		var username, content string
-		if err := rows.Scan(&username, &content); err != nil {
+		var likes int
+		if err := rows.Scan(&id, &username, &content, &likes); err != nil {
 			return nil, err
 		}
 		comment := map[string]string{
+			"id":       fmt.Sprint(id),
 			"username": username,
 			"content":  content,
+			"likes":    fmt.Sprint(likes),
 		}
 		comments = append(comments, comment)
 	}
@@ -297,7 +308,6 @@ func insertGoogleUser(name, email, googleID string) error {
 	return err
 }
 
-
 func likepost(postid string) error {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -321,7 +331,7 @@ func likecomment(commentid string) error {
 	defer db.Close()
 
 	_, err = db.Exec(
-		"INSERT INTO comment_like (comment_id, user_id) VALUES (?, ?)",
+		"INSERT INTO comment_like (comments_id, user_id) VALUES (?, ?)",
 		commentid, 1,
 	)
 
@@ -335,13 +345,12 @@ func deletelikecomment(commentid string) error {
 	}
 	defer db.Close()
 
-	_, err = db.Exec("DELETE FROM comment_like WHERE comment_id = ? AND user_id = ?;",
+	_, err = db.Exec("DELETE FROM comment_like WHERE comments_id = ? AND user_id = ?;",
 		commentid, 1,
 	)
 
 	return err
 }
-
 
 func deletelikepost(postid string) error {
 	db, err := sql.Open("sqlite", dbPath)
@@ -356,4 +365,3 @@ func deletelikepost(postid string) error {
 
 	return err
 }
-
