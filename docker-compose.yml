@@ -9,3 +9,5 @@ services:
     volumes:
       - ./database:/app/database
       - ./uploads:/app/uploads
+    env_file:
+      - .env
