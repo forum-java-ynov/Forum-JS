@@ -108,3 +108,15 @@ body {
     color: #666;
     text-align: center;
 }
+
+.nav-user-hidden {
+    display: none;
+}
+
+.nav-pfp {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    vertical-align: middle;
+}
