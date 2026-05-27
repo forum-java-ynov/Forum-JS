@@ -1,6 +1,6 @@
 # ── Build ──
 # Image Go pour compiler le projet
-FROM golang:1.25-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Dossier de travail dans le conteneur
 WORKDIR /app
