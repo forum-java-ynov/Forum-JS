@@ -1,3 +1,4 @@
+/*
 function register(event) {
     event.preventDefault();
 
@@ -26,3 +27,5 @@ function register(event) {
     window.location.href = "/login";
 })
 }
+
+*/

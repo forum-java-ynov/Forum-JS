@@ -18,12 +18,13 @@
 
     <body class="auth-page">
         <h1>Login</h1>
-        <form action="/db/login" method="post">
+        <form onsubmit="login(event)">
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" required><br><br>
             <label for="password">Password:</label>
             <input type="password" id="password" name="password" required><br><br>
             <input type="submit" value="Login">
         </form>
+        <script src="/js/login.js"></script>
     </body>
 </html>

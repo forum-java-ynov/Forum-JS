@@ -76,7 +76,7 @@ func ToggleCommentLikeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte("Like commentaire modifie"))
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func ToggleLikeHandler(w http.ResponseWriter, r *http.Request) {
@@ -90,5 +90,5 @@ func ToggleLikeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte("Like modifié"))
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

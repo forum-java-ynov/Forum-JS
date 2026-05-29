@@ -43,18 +43,36 @@
             qui compte.
         </h1>
 
-        <p class="hero-sub">
-            Un espace pour vos idées, vos photos, votre monde.
-        </p>
+<div class="posts" id="posts">
+    <div class="popup-content">
+        <h2>Create a Post</h2>
+        <form id="postForm" action="/db/create_post" method="post" enctype="multipart/form-data">
+            <label for="title">Title:</label>
+            <input type="text" id="title" name="title" required><br><br>
 
-        <div class="hero-actions">
-            <a href="/auth/google/login" class="google-btn">
-                Se connecter avec Google
-            </a>
+            <label for="content">Content:</label><br>
+            <textarea id="content" name="content" rows="4" cols="50"></textarea><br><br>
 
-            <button class="btn-secondary" onclick="showPostCreationForm()">
-                ✦ Créer un post
-            </button>
+            <label for="imageInput">Upload an image:</label>
+            <input type="file" id="image_url" name="image"><br><br>
+            
+            <div style="border:1px solid #ccc; padding:15px; border-radius:10px; width:300px;">
+                <h3>Choisir un thème</h3>
+                <label for="theme">Thème du post :</label>
+                <select id="theme" name="theme" style="width:100%; padding:8px; margin-top:8px;">
+                    <option value="tech">Technologie</option>
+                    <option value="sport">Sport</option>
+                    <option value="gaming">Gaming</option>
+                    <option value="culture">Culture</option>
+                    <option value="science">Science</option>
+                    <option value="business">Business</option>
+                </select>
+            </div>    
+            
+                    <button type="submit">Publish</button>
+                </form>
+                <button onclick="closePopup()">exit</button>
+            </div>
         </div>
     </section>
 
@@ -63,75 +81,66 @@
         <p class="section-sub">Les dernières histoires de la communauté</p>
 
         <div id="postContainer">
-            <div id="post"></div>
-        </div>
-    </section>
+            <div id="post" class="post">
+                {{ if .Posts }}
+                    {{ range .Posts }}
+                        <article class="show-post">
+                            <h2>{{ .Title }}</h2>
+                            <p>{{ .Content }}</p>
+                            {{ if .Theme }}
+                                <p><strong>Theme:</strong> {{ .Theme }}</p>
+                            {{ end }}
+                            {{ if .ImagePath }}
+                                <img src="/uploads/{{ .ImagePath }}" alt="{{ .Title }}">
+                            {{ end }}
+                            <p>Likes: {{ .Likes }}</p>
 
-</main>
+                            <form action="/db/toggle_like?id={{ .ID }}" method="post">
+                                <button type="submit">Like</button>
+                            </form>
 
-<!-- post -->
-<div class="comment-overlay" id="posts">
-    <div class="comment-modal">
+                            <button type="button" onclick="showCommenteCreationForm('{{ .ID }}')">Comment</button>
 
-        <h2>Nouveau post</h2>
+                            <form action="/db/delete_post" method="post">
+                                <input type="hidden" name="id" value="{{ .ID }}">
+                                <button type="submit">Delete</button>
+                            </form>
 
-        <form id="postForm" onsubmit="createPost(event)">
-            <div class="field">
-                <label for="title">Titre</label>
-                <input type="text" id="title" required>
+                            {{ if .Comments }}
+                                <div class="comments">
+                                    {{ range .Comments }}
+                                        <div class="comment">
+                                            <strong>{{ .Username }}</strong>
+                                            <p>{{ .Content }}</p>
+                                            <p>Likes: {{ .Likes }}</p>
+                                            <form action="/db/toggle_comment_like?id={{ .ID }}" method="post">
+                                                <button type="submit">Like</button>
+                                            </form>
+                                        </div>
+                                    {{ end }}
+                                </div>
+                            {{ end }}
+                        </article>
+                    {{ end }}
+                {{ else }}
+                    <p class="empty-posts">Aucun post pour le moment.</p>
+                {{ end }}
             </div>
 
-            <div class="field">
-                <label for="content">Contenu</label>
-                <textarea id="content" rows="4"></textarea>
+        <div class="create-commente-pop" id="create-commente-pop">
+            <div id="commente-pop-up">
+                <h2>Create a Commente</h2>
+                <form id="commenteForm" action="/db/create_commente" method="post">
+                    <input type="hidden" id="post-id-commente" name="post_id">
+                    <label for="content-commente">Content:</label><br>
+                    <textarea id="content-commente" name="content" rows="4" cols="50"></textarea><br><br>
+                    <button type="submit">Publish</button>
+                </form>
+                <button type="button" onclick="closeCommentePopup()">exit</button>
             </div>
 
-            <div class="field">
-                <label class="file-label">
-                    Choisir une image
-                    <input type="file" id="image_url" accept="image/*">
-                </label>
-            </div>
-
-            <div class="form-actions">
-                <button type="button" class="btn-close-sm" onclick="closePopup()">Annuler</button>
-                <button type="submit" class="btn-submit">Publier</button>
-            </div>
-        </form>
-
-    </div>
-</div>
-
-<!-- commennt -->
-<div class="comment-overlay" id="create-commente-pop">
-    <div class="comment-modal">
-
-        <h2>Commentaire</h2>
-
-        <form id="commenteForm" onsubmit="createCommente(event)">
-            <input type="hidden" id="post-id-commente">
-
-            <div class="field">
-                <textarea id="content-commente" rows="5"></textarea>
-            </div>
-
-            <div class="form-actions">
-                <button type="button" class="btn-close-sm"
-                        onclick="closeCommentPopup()">
-                    Annuler
-                </button>
-
-                <button type="submit" class="btn-submit">
-                    Publier
-                </button>
-            </div>
-        </form>
-
-    </div>
-</div>
-
-<script src="/frontend/js/oauth.js"></script>
-<script src="/frontend/js/post.js"></script>
+        <script src="/js/oauth.js"></script>
+        <script src="/js/post.js"></script>
 
 </body>
 </html>

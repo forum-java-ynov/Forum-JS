@@ -2,13 +2,12 @@ package backend
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 )
 
 func createCommente(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
+	if err := r.ParseForm(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -30,7 +29,7 @@ func createCommente(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprint(w, "commente create "+content)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func showComments(w http.ResponseWriter, r *http.Request) {
