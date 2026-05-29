@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+*.txt
+
+# Base de données
+database/
+*.db
+*.sqlite
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CI
+.github/
+
+# Tests
+*_test.go
+
+# Environnement
+.env
+.env.local
+.env.*

@@ -26,20 +26,21 @@ async function loadComments(postId, commentsContainer) {
     try {
         const response = await fetch(`/db/comments?post_id=${postId}`);
         if (!response.ok) {
-            commentsContainer.textContent = "Impossible de charger les commentaires.";
+            commentsContainer.textContent =
+                "Impossible de charger les commentaires.";
             return;
         }
 
         const comments = await response.json();
         commentsContainer.innerHTML = "";
 
-        if (!comments || comments.length === 0) {
-            return;
-        }
+        if (!comments || comments.length === 0) return;
 
         comments.forEach(comment => {
-            const commentElement = document.createElement("div");
-            commentElement.className = "comment";
+            const item = document.createElement("div");
+            item.className = "comment-item";
+
+            const left = document.createElement("div");
 
             const username = document.createElement("strong");
             username.textContent = comment.username;
@@ -51,10 +52,14 @@ async function loadComments(postId, commentsContainer) {
             commentElement.appendChild(content);
             commentsContainer.appendChild(commentElement);
         });
-    } catch (error) {
-        commentsContainer.textContent = "Impossible de charger les commentaires.";
+
+    } catch (err) {
+        commentsContainer.textContent =
+            "Impossible de charger les commentaires.";
     }
 }
+
+/* posts */
 
 async function loadPosts() {
     const container = document.getElementById("postContainer");
@@ -72,10 +77,11 @@ async function loadPosts() {
         container.innerHTML = "";
 
         if (!posts || posts.length === 0) {
-            const emptyMessage = document.createElement("p");
-            emptyMessage.className = "empty-posts";
-            emptyMessage.textContent = "Aucun post pour le moment.";
-            container.appendChild(emptyMessage);
+            const empty = document.createElement("p");
+            empty.className = "empty-state";
+            empty.textContent = "Aucun post pour le moment.";
+
+            container.appendChild(empty);
             return;
         }
 
@@ -83,7 +89,19 @@ async function loadPosts() {
             const article = document.createElement("article");
             article.className = "show-post";
 
-            const title = document.createElement("h2");
+            if (post.image_path) {
+                const img = document.createElement("img");
+                img.src = `/uploads/${post.image_path}`;
+                img.alt = post.title;
+                img.className = "post-card-img";
+
+                article.appendChild(img);
+            }
+
+            const body = document.createElement("div");
+            body.className = "post-card-body";
+
+            const title = document.createElement("h3");
             title.textContent = post.title;
 
             const content = document.createElement("p");
@@ -96,12 +114,7 @@ async function loadPosts() {
             article.appendChild(content);
             article.appendChild(theme);
 
-            if (post.image_path) {
-                const image = document.createElement("img");
-                image.src = `/uploads/${post.image_path}`;
-                image.alt = post.title;
-                article.appendChild(image);
-            }
+            article.appendChild(body);
 
             const commentsContainer = document.createElement("div");
             commentsContainer.className = "comments";
@@ -110,7 +123,8 @@ async function loadPosts() {
 
             container.appendChild(article);
         });
-    } catch (error) {
+
+    } catch (err) {
         container.textContent = "Impossible de charger les posts.";
     }
 }

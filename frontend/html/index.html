@@ -1,35 +1,47 @@
 <!DOCTYPE html>
-<html lang="FR">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accueil</title>
+
     <link rel="stylesheet" href="/frontend/css/Style.css" />
 </head>
 
 <body>
-<nav class="nav">
+
+<nav>
     <ul>
         <li><a href="/">Home</a></li>
+
+        <div class="nav-divider"></div>
+
         <li id="nav-login"><a href="/login">Login</a></li>
         <li id="nav-register"><a href="/register">Register</a></li>
-        <li id="nav-user" class="nav-user-hidden">
-            <img id="nav-pfp" src="" alt="pfp" class="nav-pfp">
+
+        <li id="nav-user" class="nav-user nav-user-hidden">
+            <img id="nav-pfp" src="" class="nav-pfp" alt="">
             <span id="nav-email"></span>
         </li>
+
+        <div class="nav-divider"></div>
+
         <li id="nav-logout" class="nav-user-hidden">
             <a href="/auth/logout">Déconnexion</a>
         </li>
+
     </ul>
 </nav>
 
-<h1>Welcome to the Home Page</h1>
+<main>
 
-<a href="/auth/google/login">
-    <button>Se connecter avec Google</button>
-</a>
+    <section class="hero">
+        <p class="hero-eyebrow">Bienvenue</p>
 
-<button onclick="showPostCreationForm()">Create a Post</button>
+        <h1>
+            Partagez ce<br>
+            qui compte.
+        </h1>
 
 <div class="posts" id="posts">
     <div class="popup-content">
@@ -62,6 +74,12 @@
                 <button onclick="closePopup()">exit</button>
             </div>
         </div>
+    </section>
+
+    <section class="section">
+        <p class="section-title">Publications</p>
+        <p class="section-sub">Les dernières histoires de la communauté</p>
+
         <div id="postContainer">
             <div id="post" class="post">
                 {{ if .Posts }}
@@ -108,7 +126,6 @@
                     <p class="empty-posts">Aucun post pour le moment.</p>
                 {{ end }}
             </div>
-        </div>
 
         <div class="create-commente-pop" id="create-commente-pop">
             <div id="commente-pop-up">
@@ -121,10 +138,9 @@
                 </form>
                 <button type="button" onclick="closeCommentePopup()">exit</button>
             </div>
-        </div>
 
         <script src="/js/oauth.js"></script>
         <script src="/js/post.js"></script>
 
-    </body>
+</body>
 </html>
