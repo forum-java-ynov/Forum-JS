@@ -131,38 +131,40 @@ func handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 
 // handleGoogleCallback gets google code and user infos
 func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	// Vérification de l'état CSRF
+
 	if r.FormValue("state") != oauthStateToken {
 		http.Error(w, "State OAuth invalide", http.StatusBadRequest)
 		return
 	}
 
-	// trade code for access token
 	token, err := googleOauthConfig.Exchange(context.Background(), r.FormValue("code"))
 	if err != nil {
 		http.Error(w, "Impossible d'échanger le code: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// getting userinfos from google
 	userInfo, err := fetchGoogleUserInfo(token)
 	if err != nil {
 		http.Error(w, "Impossible de récupérer le profil Google", http.StatusInternalServerError)
 		return
 	}
 
-	// Connexion ou inscription automatique de l'utilisateur
 	if err := loginOrRegisterGoogleUser(userInfo); err != nil {
 		http.Error(w, "Erreur lors de la connexion Google: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Cookie de session
+	name := userInfo.Name
+	if name == "" {
+		name = userInfo.Email
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     "user_email",
 		Value:    userInfo.Email,
 		Path:     "/",
 		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
 	})
 
 	http.SetCookie(w, &http.Cookie{
@@ -170,27 +172,50 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		Value:    userInfo.Picture,
 		Path:     "/",
 		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "name",
+		Value:    name,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
 	})
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func handleMe(w http.ResponseWriter, r *http.Request) {
-	//check if user is logged in
+
 	cookie, err := r.Cookie("user_email")
 	if err != nil {
 		http.Error(w, "Non connecté", http.StatusUnauthorized)
 		return
 	}
+
 	pictureCookie, _ := r.Cookie("user_picture")
+	nameCookie, _ := r.Cookie("name")
+
 	picture := ""
+	name := ""
+
 	if pictureCookie != nil {
 		picture = pictureCookie.Value
 	}
+
+	if nameCookie != nil && nameCookie.Value != "" {
+		name = nameCookie.Value
+	} else {
+		name = cookie.Value
+	}
+
 	w.Header().Set("Content-Type", "application/json")
+
 	json.NewEncoder(w).Encode(map[string]string{
 		"email":   cookie.Value,
 		"picture": picture,
+		"name":    name,
 	})
 }
 
@@ -219,7 +244,6 @@ func loginOrRegisterGoogleUser(user *GoogleUserInfo) error {
 	}
 
 	if !exists {
-		// Crée le compte sans mot de passe (connexion Google uniquement)
 		return insertGoogleUser(user.Name, user.Email, user.ID)
 	}
 
