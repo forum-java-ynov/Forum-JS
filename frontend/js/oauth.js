@@ -1,26 +1,40 @@
 document.addEventListener("DOMContentLoaded", () => {
     fetch('/api/me')
-        .then(r => r.ok ? r.json() : null)
+        .then(async r => {
+            if (!r.ok) return null;
+            return await r.json();
+        })
         .then(data => {
             if (!data) return;
 
-            document.getElementById('nav-login').style.display = 'none'
-            document.getElementById('nav-register').style.display = 'none'
-            document.getElementById('nav-user').style.display = 'flex'
-            document.getElementById('nav-logout').style.display = 'block'
+            // hide login/register
+            const login = document.getElementById('nav-login');
+            const register = document.getElementById('nav-register');
 
+            if (login) login.style.display = 'none';
+            if (register) register.style.display = 'none';
+
+            // show user
+            const user = document.getElementById('nav-user');
+            const logout = document.getElementById('nav-logout');
+
+            if (user) user.style.display = 'flex';
+            if (logout) logout.style.display = 'block';
+
+            // name
             const nameEl = document.getElementById("nav-name");
-            const picEl = document.getElementById("nav-pfp");
-
             if (nameEl) {
                 nameEl.textContent = data.name || data.email;
             }
 
-            if (picEl && data.picture) {
-                picEl.src = data.picture;
+            // picture
+            const picEl = document.getElementById("nav-pfp");
+            if (picEl) {
+                picEl.src = data.picture || "";
             }
 
-            const googleBtn = document.querySelector('a[href="/auth/google/login"]')
-            if (googleBtn) googleBtn.style.display = 'none'
-        })
-})
+            // hide google button
+            const googleBtn = document.querySelector('a[href="/auth/google/login"]');
+            if (googleBtn) googleBtn.style.display = 'none';
+        });
+});
