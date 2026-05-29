@@ -275,11 +275,13 @@ func decodeRequest(r *http.Request, target any) error {
 }
 
 func handleLogout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{
-		Name:   "user_email",
-		Value:  "",
-		Path:   "/",
-		MaxAge: -1,
-	})
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+    for _, name := range []string{"user_email", "user_picture", "name"} {
+        http.SetCookie(w, &http.Cookie{
+            Name:   name,
+            Value:  "",
+            Path:   "/",
+            MaxAge: -1,
+        })
+    }
+    http.Redirect(w, r, "/", http.StatusSeeOther)
 }
