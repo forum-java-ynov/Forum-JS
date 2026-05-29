@@ -1,78 +1,137 @@
 <!DOCTYPE html>
-<html lang="FR">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accueil</title>
+
     <link rel="stylesheet" href="/frontend/css/Style.css" />
 </head>
 
 <body>
-<nav class="nav">
+
+<nav>
     <ul>
         <li><a href="/">Home</a></li>
+
+        <div class="nav-divider"></div>
+
         <li id="nav-login"><a href="/login">Login</a></li>
         <li id="nav-register"><a href="/register">Register</a></li>
-        <li id="nav-user" class="nav-user-hidden">
-            <img id="nav-pfp" src="" alt="pfp" class="nav-pfp">
+
+        <li id="nav-user" class="nav-user nav-user-hidden">
+            <img id="nav-pfp" src="" class="nav-pfp" alt="">
             <span id="nav-email"></span>
         </li>
+
+        <div class="nav-divider"></div>
+
         <li id="nav-logout" class="nav-user-hidden">
             <a href="/auth/logout">Déconnexion</a>
         </li>
+
     </ul>
 </nav>
 
-<h1>Welcome to the Home Page</h1>
+<main>
 
-<a href="/auth/google/login">
-    <button>Se connecter avec Google</button>
-</a>
+    <section class="hero">
+        <p class="hero-eyebrow">Bienvenue</p>
 
-<button onclick="showPostCreationForm()">Create a Post</button>
+        <h1>
+            Partagez ce<br>
+            qui compte.
+        </h1>
 
-<div class="posts" id="posts">
-    <div class="popup-content">
-        <h2>Create a Post</h2>
-        <form id="postForm" onsubmit="createPost(event)">
-            <label for="title">Title:</label>
-            <input type="text" id="title" name="title" required><br><br>
+        <p class="hero-sub">
+            Un espace pour vos idées, vos photos, votre monde.
+        </p>
 
-            <label for="content">Content:</label><br>
-            <textarea id="content" name="content" rows="4" cols="50"></textarea><br><br>
+        <div class="hero-actions">
+            <a href="/auth/google/login" class="google-btn">
+                Se connecter avec Google
+            </a>
 
-            <label for="imageInput">Upload an image:</label>
-            <input type="file" id="image_url" name="image"><br><br>
-
-                    
-                    <button type="submit">Publish</button>
-                </form>
-                <button onclick="closePopup()">exit</button>
-            </div>
+            <button class="btn-secondary" onclick="showPostCreationForm()">
+                ✦ Créer un post
+            </button>
         </div>
+    </section>
+
+    <section class="section">
+        <p class="section-title">Publications</p>
+        <p class="section-sub">Les dernières histoires de la communauté</p>
+
         <div id="postContainer">
-            <div id="post" class="post">
-
-            </div>
+            <div id="post"></div>
         </div>
+    </section>
 
-        <div class="create-commente-pop" id="create-commente-pop">
-            <div id="commente-pop-up">
-                <h2>Create a Commente</h2>
-                <form id="commenteForm" onsubmit="createCommente(event)">
-                    <input type="hidden" id="post-id-commente" name="post_id">
-                    <label for="content-commente">Content:</label><br>
-                    <textarea id="content-commente" name="content" rows="4" cols="50"></textarea><br><br>
-                    <button type="submit">Publish</button>
-                </form>
+</main>
+
+<!-- post -->
+<div class="comment-overlay" id="posts">
+    <div class="comment-modal">
+
+        <h2>Nouveau post</h2>
+
+        <form id="postForm" onsubmit="createPost(event)">
+            <div class="field">
+                <label for="title">Titre</label>
+                <input type="text" id="title" required>
             </div>
-        </div>
 
-        <script src="/js/oauth.js"></script>
-        <script src="../js/post.js"></script>
+            <div class="field">
+                <label for="content">Contenu</label>
+                <textarea id="content" rows="4"></textarea>
+            </div>
 
+            <div class="field">
+                <label class="file-label">
+                    Choisir une image
+                    <input type="file" id="image_url" accept="image/*">
+                </label>
+            </div>
 
+            <div class="form-actions">
+                <button type="button" class="btn-close-sm" onclick="closePopup()">Annuler</button>
+                <button type="submit" class="btn-submit">Publier</button>
+            </div>
+        </form>
 
+    </div>
+</div>
 
-    </body>
+<!-- commennt -->
+<div class="comment-overlay" id="create-commente-pop">
+    <div class="comment-modal">
+
+        <h2>Commentaire</h2>
+
+        <form id="commenteForm" onsubmit="createCommente(event)">
+            <input type="hidden" id="post-id-commente">
+
+            <div class="field">
+                <textarea id="content-commente" rows="5"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-close-sm"
+                        onclick="closeCommentPopup()">
+                    Annuler
+                </button>
+
+                <button type="submit" class="btn-submit">
+                    Publier
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+<script src="/frontend/js/oauth.js"></script>
+<script src="/frontend/js/post.js"></script>
+
+</body>
 </html>

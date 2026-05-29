@@ -176,6 +176,7 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleMe(w http.ResponseWriter, r *http.Request) {
+	//check if user is logged in
 	cookie, err := r.Cookie("user_email")
 	if err != nil {
 		http.Error(w, "Non connecté", http.StatusUnauthorized)
