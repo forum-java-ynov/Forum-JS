@@ -2,7 +2,6 @@ package backend
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -21,6 +20,7 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 	title := r.FormValue("title")
 	content := r.FormValue("content")
 	imagePath := ""
+	theme := r.FormValue("theme")
 
 	file, handler, err := r.FormFile("image")
 	if err == nil {
@@ -48,8 +48,8 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	addPost(title, content, imagePath)
-	fmt.Fprint(w, "Post cree "+title+" "+content)
+	addPost(title, content, imagePath, theme)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func showPosts(w http.ResponseWriter, r *http.Request) {
@@ -60,29 +60,21 @@ func showPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, post := range posts {
-		id := post["id"]
-
-		comments, err := getComments(id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		fmt.Println(comments)
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(posts)
 }
 
 func deletePostHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
 		http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 		return
 	}
 
 	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		idStr = r.FormValue("id")
+	}
+
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		http.Error(w, "ID invalide", http.StatusBadRequest)
@@ -93,5 +85,11 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
 		return
 	}
+
+	if r.Method == http.MethodPost {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 }

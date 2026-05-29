@@ -103,6 +103,11 @@ body {
     gap: 16px;
 }
 
+#post {
+    display: grid;
+    gap: 16px;
+}
+
 .show-post {
     background: #fff;
     border: 1px solid #e0e0e0;

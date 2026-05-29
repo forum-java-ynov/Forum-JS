@@ -1,47 +1,30 @@
-function createPost(event) {
-    event.preventDefault();
-
-    const formData = new FormData();
-
-    formData.append("title", document.getElementById("title").value);
-    formData.append("content", document.getElementById("content").value);
-    
-    const image = document.getElementById("image_url").files[0];
-
-    if (image) {
-        formData.append("image", image);
-    }
-
-    fetch("/db/create_post", {
-        method: "POST",
-        body: formData
-    })
-    .then(async response => {
-
-        const text = await response.text();
-
-        if (!response.ok) {
-            alert(text);
-            return;
-        }
-
-        alert(text);
-        window.location.href = "/";
-    });
-}
-
 function showPostCreationForm() {
-    document.getElementById("posts").style.display = "flex";
+    const popup = document.getElementById("posts");
+    if (popup) popup.style.display = "flex";
 }
 
 function closePopup() {
-    document.getElementById("posts").style.display = "none";
+    const popup = document.getElementById("posts");
+    if (popup) popup.style.display = "none";
 }
 
+function showCommenteCreationForm(postId) {
+    const popup = document.getElementById("create-commente-pop");
+    const postInput = document.getElementById("post-id-commente");
+
+    if (postInput) postInput.value = postId;
+    if (popup) popup.style.display = "flex";
+}
+
+function closeCommentePopup() {
+    const popup = document.getElementById("create-commente-pop");
+    if (popup) popup.style.display = "none";
+}
+
+/*
 async function loadComments(postId, commentsContainer) {
     try {
         const response = await fetch(`/db/comments?post_id=${postId}`);
-
         if (!response.ok) {
             commentsContainer.textContent = "Impossible de charger les commentaires.";
             return;
@@ -66,22 +49,6 @@ async function loadComments(postId, commentsContainer) {
 
             commentElement.appendChild(username);
             commentElement.appendChild(content);
-
-            const likeBtn = document.createElement("button");
-            likeBtn.textContent = `Like ${comment.likes}`;
-            likeBtn.onclick = async function () {
-                const response = await fetch(`/db/toggle_comment_like?id=${comment.id}`, {
-                    method: "POST"
-                });
-
-                if (response.ok) {
-                    loadComments(postId, commentsContainer);
-                } else {
-                    alert("Erreur lors du like du commentaire");
-                }
-            };
-
-            commentElement.appendChild(likeBtn);
             commentsContainer.appendChild(commentElement);
         });
     } catch (error) {
@@ -90,12 +57,18 @@ async function loadComments(postId, commentsContainer) {
 }
 
 async function loadPosts() {
-    const container = document.getElementById("post");
+    const container = document.getElementById("postContainer");
+
+    if (!container) return;
 
     try {
         const response = await fetch("/db/posts");
-        const posts = await response.json();
+        if (!response.ok) {
+            container.textContent = "Impossible de charger les posts.";
+            return;
+        }
 
+        const posts = await response.json();
         container.innerHTML = "";
 
         if (!posts || posts.length === 0) {
@@ -109,7 +82,6 @@ async function loadPosts() {
         posts.forEach(post => {
             const article = document.createElement("article");
             article.className = "show-post";
-            article.dataset.postId = post.id;
 
             const title = document.createElement("h2");
             title.textContent = post.title;
@@ -117,8 +89,12 @@ async function loadPosts() {
             const content = document.createElement("p");
             content.textContent = post.content;
 
+            const theme = document.createElement("p");
+            theme.textContent = `Thème : ${post.theme}`;
+
             article.appendChild(title);
             article.appendChild(content);
+            article.appendChild(theme);
 
             if (post.image_path) {
                 const image = document.createElement("img");
@@ -127,44 +103,11 @@ async function loadPosts() {
                 article.appendChild(image);
             }
 
-            const likeBtn = document.createElement("button");
-
-            likeBtn.textContent = `❤️ ${post.likes}`;
-
-            likeBtn.onclick = async function () {
-                const response = await fetch(`/db/toggle_like?id=${post.id}`, {
-                    method: "POST"
-                });
-
-                if (response.ok) {
-                    loadPosts();
-                } else {
-                    alert("Erreur lors du like");
-                }
-            };
-            article.appendChild(likeBtn);
-
-            const commentebutton = document.createElement("button")
-            commentebutton.textContent = "Add commente"
-
-            commentebutton.onclick = function(){
-                document.getElementById("post-id-commente").value = post.id;
-                document.getElementById("create-commente-pop").style.display = "flex";
-            }
-
             const commentsContainer = document.createElement("div");
             commentsContainer.className = "comments";
             article.appendChild(commentsContainer);
             loadComments(post.id, commentsContainer);
 
-            article.appendChild(commentebutton);
-            const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "Supprimer";
-            deleteBtn.style.backgroundColor = "#ff4c4c";
-            deleteBtn.style.color = "white";
-            deleteBtn.onclick = () => deletePostAction(post.id);
-            
-            article.appendChild(deleteBtn);
             container.appendChild(article);
         });
     } catch (error) {
@@ -172,50 +115,5 @@ async function loadPosts() {
     }
 }
 
-async function createCommente(event) {
-    event.preventDefault()
-
-    const formData = new FormData();
-
-    formData.append("post_id", document.getElementById("post-id-commente").value);
-    formData.append("content", document.getElementById("content-commente").value);
-
-    fetch("/db/create_commente", {
-        method: "POST",
-        body: formData
-    })
-    .then(async response => {
-
-        const text = await response.text();
-
-        if (!response.ok) {
-            alert(text);
-            return;
-        }
-
-        alert(text);
-        window.location.href = "/";
-    });
-
-}
-
-
-async function deletePostAction(postId) {
-    if (!postId) {
-        alert("Erreur : L'ID du post est introuvable.");
-        return;
-    }
-
-    if (!confirm("Voulez-vous vraiment supprimer ce post ?")) return;
-
-    const response = await fetch(`/db/delete_post?id=${postId}`, { method: "DELETE" });
-    
-    if (response.ok) {
-        alert("Post supprimé avec succès !");
-        loadPosts();
-    } else {
-        alert("Erreur lors de la suppression du post.");
-    }
-}
-
 document.addEventListener("DOMContentLoaded", loadPosts);
+*/

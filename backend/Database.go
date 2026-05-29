@@ -13,6 +13,23 @@ import (
 
 var dbPath = "database/database.db"
 
+type Comment struct {
+	ID       int
+	Username string
+	Content  string
+	Likes    int
+}
+
+type Post struct {
+	ID        int
+	Title     string
+	Content   string
+	ImagePath string
+	Theme     string
+	Likes     int
+	Comments  []Comment
+}
+
 func CreateDatabase() {
 	os.MkdirAll("database", 0755)
 
@@ -52,7 +69,8 @@ func CreateTables() {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		title TEXT NOT NULL,
 		content TEXT NOT NULL,
-		image_path TEXT
+		image_path TEXT,
+		theme TEXT
 	);
 	`)
 
@@ -151,23 +169,23 @@ func loginUser(username, password string) (bool, error) {
 	return CheckPasswordHash(password, storedPassword), nil
 }
 
-func addPost(title, content, imagePath string) {
+func addPost(title, content, imagePath, theme string) {
 	db, err := sql.Open("sqlite", "database/database.db")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 	_, err = db.Exec(`
-	INSERT INTO posts (title, content, image_path) 
-	VALUES (?, ?, ?);
-	`, title, content, imagePath)
+	INSERT INTO posts (title, content, image_path, theme) 
+	VALUES (?, ?, ?, ?);
+	`, title, content, imagePath, theme)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func getPosts() ([]map[string]string, error) {
-	db, err := sql.Open("sqlite", "database/database.db")
+func getPosts() ([]Post, error) {
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
 	}
@@ -178,6 +196,7 @@ func getPosts() ([]map[string]string, error) {
 			posts.title,
 			posts.content,
 			posts.image_path,
+			posts.theme,
 			COUNT(post_like.id) as likes
 		FROM posts
 		LEFT JOIN post_like ON posts.id = post_like.post_id
@@ -190,23 +209,23 @@ func getPosts() ([]map[string]string, error) {
 	}
 	defer rows.Close()
 
-	var posts []map[string]string
+	var posts []Post
 	for rows.Next() {
 		var id int
-		var title, content string
+		var title, content, theme string
 		var imagePath sql.NullString
-		if err := rows.Scan(&id, &title, &content, &imagePath, &likes); err != nil {
+		if err := rows.Scan(&id, &title, &content, &imagePath, &theme, &likes); err != nil {
 			return nil, err
 		}
-		post := map[string]string{
-			"id":         fmt.Sprint(id),
-			"title":      title,
-			"content":    content,
-			"image_path": "",
-			"likes":      fmt.Sprint(likes),
+		post := Post{
+			ID:      id,
+			Title:   title,
+			Content: content,
+			Theme:   theme,
+			Likes:   likes,
 		}
 		if imagePath.Valid {
-			post["image_path"] = imagePath.String
+			post.ImagePath = imagePath.String
 		}
 		posts = append(posts, post)
 	}
@@ -227,7 +246,7 @@ func addCommente(postID int, content string) error {
 	return err
 }
 
-func getComments(postID string) ([]map[string]string, error) {
+func getComments(postID string) ([]Comment, error) {
 	db, err := sql.Open("sqlite", "database/database.db")
 	if err != nil {
 		return nil, err
@@ -250,7 +269,7 @@ func getComments(postID string) ([]map[string]string, error) {
 	}
 	defer rows.Close()
 
-	var comments []map[string]string
+	var comments []Comment
 	for rows.Next() {
 		var id int
 		var username, content string
@@ -258,11 +277,11 @@ func getComments(postID string) ([]map[string]string, error) {
 		if err := rows.Scan(&id, &username, &content, &likes); err != nil {
 			return nil, err
 		}
-		comment := map[string]string{
-			"id":       fmt.Sprint(id),
-			"username": username,
-			"content":  content,
-			"likes":    fmt.Sprint(likes),
+		comment := Comment{
+			ID:       id,
+			Username: username,
+			Content:  content,
+			Likes:    likes,
 		}
 		comments = append(comments, comment)
 	}

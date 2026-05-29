@@ -34,7 +34,7 @@
 <div class="posts" id="posts">
     <div class="popup-content">
         <h2>Create a Post</h2>
-        <form id="postForm" onsubmit="createPost(event)">
+        <form id="postForm" action="/db/create_post" method="post" enctype="multipart/form-data">
             <label for="title">Title:</label>
             <input type="text" id="title" name="title" required><br><br>
 
@@ -43,8 +43,20 @@
 
             <label for="imageInput">Upload an image:</label>
             <input type="file" id="image_url" name="image"><br><br>
-
-                    
+            
+            <div style="border:1px solid #ccc; padding:15px; border-radius:10px; width:300px;">
+                <h3>Choisir un thème</h3>
+                <label for="theme">Thème du post :</label>
+                <select id="theme" name="theme" style="width:100%; padding:8px; margin-top:8px;">
+                    <option value="tech">Technologie</option>
+                    <option value="sport">Sport</option>
+                    <option value="gaming">Gaming</option>
+                    <option value="culture">Culture</option>
+                    <option value="science">Science</option>
+                    <option value="business">Business</option>
+                </select>
+            </div>    
+            
                     <button type="submit">Publish</button>
                 </form>
                 <button onclick="closePopup()">exit</button>
@@ -52,27 +64,67 @@
         </div>
         <div id="postContainer">
             <div id="post" class="post">
+                {{ if .Posts }}
+                    {{ range .Posts }}
+                        <article class="show-post">
+                            <h2>{{ .Title }}</h2>
+                            <p>{{ .Content }}</p>
+                            {{ if .Theme }}
+                                <p><strong>Theme:</strong> {{ .Theme }}</p>
+                            {{ end }}
+                            {{ if .ImagePath }}
+                                <img src="/uploads/{{ .ImagePath }}" alt="{{ .Title }}">
+                            {{ end }}
+                            <p>Likes: {{ .Likes }}</p>
 
+                            <form action="/db/toggle_like?id={{ .ID }}" method="post">
+                                <button type="submit">Like</button>
+                            </form>
+
+                            <button type="button" onclick="showCommenteCreationForm('{{ .ID }}')">Comment</button>
+
+                            <form action="/db/delete_post" method="post">
+                                <input type="hidden" name="id" value="{{ .ID }}">
+                                <button type="submit">Delete</button>
+                            </form>
+
+                            {{ if .Comments }}
+                                <div class="comments">
+                                    {{ range .Comments }}
+                                        <div class="comment">
+                                            <strong>{{ .Username }}</strong>
+                                            <p>{{ .Content }}</p>
+                                            <p>Likes: {{ .Likes }}</p>
+                                            <form action="/db/toggle_comment_like?id={{ .ID }}" method="post">
+                                                <button type="submit">Like</button>
+                                            </form>
+                                        </div>
+                                    {{ end }}
+                                </div>
+                            {{ end }}
+                        </article>
+                    {{ end }}
+                {{ else }}
+                    <p class="empty-posts">Aucun post pour le moment.</p>
+                {{ end }}
             </div>
         </div>
 
         <div class="create-commente-pop" id="create-commente-pop">
             <div id="commente-pop-up">
                 <h2>Create a Commente</h2>
-                <form id="commenteForm" onsubmit="createCommente(event)">
+                <form id="commenteForm" action="/db/create_commente" method="post">
                     <input type="hidden" id="post-id-commente" name="post_id">
                     <label for="content-commente">Content:</label><br>
                     <textarea id="content-commente" name="content" rows="4" cols="50"></textarea><br><br>
                     <button type="submit">Publish</button>
                 </form>
+                <button type="button" onclick="closeCommentePopup()">exit</button>
             </div>
         </div>
 
         <script src="/js/oauth.js"></script>
-        <script src="../js/post.js"></script>
-
-
-
+        <script src="/js/post.js"></script>
 
     </body>
 </html>

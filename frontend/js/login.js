@@ -1,3 +1,4 @@
+/*
 function login(event) {
     event.preventDefault();
 
@@ -23,3 +24,4 @@ function login(event) {
         window.location.href = "/";
     });
 }
+    */
