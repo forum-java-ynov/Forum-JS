@@ -67,9 +67,10 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 
 func Server() {
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("frontend/js"))))
+	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("frontend/css"))))
 	http.Handle("/frontend/", http.StripPrefix("/frontend/", http.FileServer(http.Dir("frontend"))))
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
-
+	
 	//routes
 	http.HandleFunc("/", showIndex)
 
