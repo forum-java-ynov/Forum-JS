@@ -17,7 +17,7 @@
 
     <body class="auth-page">
         <h1>Register</h1>
-        <form onsubmit="register(event)">
+        <form action="/db/register" method="post">
             <label for="full_name">Full Name:</label>
             <input type="text" id="full_name" name="full_name" required><br><br>
             <label for="username">Username:</label>
@@ -32,6 +32,5 @@
             <input type="submit" value="Register">
         </form>
 
-        <script src="/js/register.js"></script>
     </body>
 </html>
