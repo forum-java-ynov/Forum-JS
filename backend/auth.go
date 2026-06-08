@@ -69,12 +69,17 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if result {
-		http.SetCookie(w, &http.Cookie{
-			Name:     "user_email",
-			Value:    data.Username,
-			Path:     "/",
-			HttpOnly: true,
-		})
+		session, err := getSession(w, r)
+		if err != nil {
+			http.Error(w, "Erreur de session", http.StatusInternalServerError)
+			return
+		}
+		session.Values["user_id"] = data.Username
+		session.Values["user_email"] = data.Username
+		if err := session.Save(r, w); err != nil {
+			http.Error(w, "Erreur de session", http.StatusInternalServerError)
+			return
+		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -159,61 +164,53 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		name = userInfo.Email
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "user_email",
-		Value:    userInfo.Email,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "user_picture",
-		Value:    userInfo.Picture,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "name",
-		Value:    name,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
-
+	session, err := getSession(w, r)
+	if err != nil {
+		http.Error(w, "Erreur de session", http.StatusInternalServerError)
+		return
+	}
+	session.Values["user_id"] = userInfo.Email
+	session.Values["user_email"] = userInfo.Email
+	session.Values["user_name"] = name
+	session.Values["user_picture"] = userInfo.Picture
+	if err := session.Save(r, w); err != nil {
+		http.Error(w, "Impossible de sauvegarder la session", http.StatusInternalServerError)
+		return
+	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func handleMe(w http.ResponseWriter, r *http.Request) {
-
-	cookie, err := r.Cookie("user_email")
+	session, err := getSession(w, r)
 	if err != nil {
+		http.Error(w, "Erreur de session", http.StatusInternalServerError)
+		return
+	}
+
+	id, _ := session.Values["user_id"].(string)
+	if id == "" {
 		http.Error(w, "Non connecté", http.StatusUnauthorized)
 		return
 	}
 
-	pictureCookie, _ := r.Cookie("user_picture")
-	nameCookie, _ := r.Cookie("name")
-
-	picture := ""
-	name := ""
-
-	if pictureCookie != nil {
-		picture = pictureCookie.Value
+	email, _ := session.Values["user_email"].(string)
+	picture, _ := session.Values["user_picture"].(string)
+	name, _ := session.Values["user_name"].(string)
+	if name == "" {
+		if email != "" {
+			name = email
+		} else {
+			name = id
+		}
 	}
-
-	if nameCookie != nil && nameCookie.Value != "" {
-		name = nameCookie.Value
-	} else {
-		name = cookie.Value
+	if email == "" {
+		email = id
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-
 	json.NewEncoder(w).Encode(map[string]string{
-		"email":   cookie.Value,
+		"id":      id,
+		"email":   email,
 		"picture": picture,
 		"name":    name,
 	})
@@ -275,13 +272,15 @@ func decodeRequest(r *http.Request, target any) error {
 }
 
 func handleLogout(w http.ResponseWriter, r *http.Request) {
-    for _, name := range []string{"user_email", "user_picture", "name"} {
-        http.SetCookie(w, &http.Cookie{
-            Name:   name,
-            Value:  "",
-            Path:   "/",
-            MaxAge: -1,
-        })
-    }
-    http.Redirect(w, r, "/", http.StatusSeeOther)
+	session, err := getSession(w, r)
+	if err != nil {
+		http.Error(w, "Erreur de session", http.StatusInternalServerError)
+		return
+	}
+	session.Options.MaxAge = -1
+	if err := session.Save(r, w); err != nil {
+		http.Error(w, "Impossible de supprimer la session", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }

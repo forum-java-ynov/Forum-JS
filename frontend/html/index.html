@@ -84,6 +84,7 @@
                 {{ if .Posts }}
                     {{ range .Posts }}
                         <article class="show-post">
+                            <p>Publié par: {{ .Username }}</p>
                             <h2>{{ .Title }}</h2>
                             <p>{{ .Content }}</p>
                             {{ if .Theme }}
