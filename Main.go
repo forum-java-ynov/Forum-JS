@@ -9,7 +9,7 @@ import (
 func main() {
 	// Charger le .env
 	godotenv.Load()
-	backend.InitOauth()
+	backend.InitOAuth()
 	// Création de la base de données
 	backend.CreateDatabase()
 
