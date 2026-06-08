@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
@@ -26,6 +27,7 @@ type Post struct {
 	Content   string
 	ImagePath string
 	Theme     string
+	Username  string
 	Likes     int
 	Comments  []Comment
 }
@@ -70,7 +72,9 @@ func CreateTables() {
 		title TEXT NOT NULL,
 		content TEXT NOT NULL,
 		image_path TEXT,
-		theme TEXT
+		theme TEXT,
+		user_id INTEGER NOT NULL,
+		FOREIGN KEY (user_id) REFERENCES users(id)
 	);
 	`)
 
@@ -169,16 +173,42 @@ func loginUser(username, password string) (bool, error) {
 	return CheckPasswordHash(password, storedPassword), nil
 }
 
-func addPost(title, content, imagePath, theme string) {
-	db, err := sql.Open("sqlite", "database/database.db")
+func getUserIDValue(userID string) (interface{}, error) {
+	if id, err := strconv.Atoi(userID); err == nil {
+		return id, nil
+	}
+
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	var id int
+	err = db.QueryRow("SELECT id FROM users WHERE username = ? OR email = ?;", userID, userID).Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+
+	return id, nil
+}
+
+func addPost(title, content, imagePath, theme, userID string) {
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
+
+	uid, err := getUserIDValue(userID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	_, err = db.Exec(`
-	INSERT INTO posts (title, content, image_path, theme) 
-	VALUES (?, ?, ?, ?);
-	`, title, content, imagePath, theme)
+	INSERT INTO posts (title, content, image_path, theme, user_id) 
+	VALUES (?, ?, ?, ?, ?);
+	`, title, content, imagePath, theme, uid)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -197,9 +227,11 @@ func getPosts() ([]Post, error) {
 			posts.content,
 			posts.image_path,
 			posts.theme,
+			COALESCE(users.full_name, users.username, 'Utilisateur'),
 			COUNT(post_like.id) as likes
 		FROM posts
 		LEFT JOIN post_like ON posts.id = post_like.post_id
+		LEFT JOIN users ON posts.user_id = users.id
 		GROUP BY posts.id;
 	`)
 	var likes int
@@ -212,17 +244,18 @@ func getPosts() ([]Post, error) {
 	var posts []Post
 	for rows.Next() {
 		var id int
-		var title, content, theme string
+		var title, content, theme, username string
 		var imagePath sql.NullString
-		if err := rows.Scan(&id, &title, &content, &imagePath, &theme, &likes); err != nil {
+		if err := rows.Scan(&id, &title, &content, &imagePath, &theme, &username, &likes); err != nil {
 			return nil, err
 		}
 		post := Post{
-			ID:      id,
-			Title:   title,
-			Content: content,
-			Theme:   theme,
-			Likes:   likes,
+			ID:       id,
+			Title:    title,
+			Content:  content,
+			Theme:    theme,
+			Username: username,
+			Likes:    likes,
 		}
 		if imagePath.Valid {
 			post.ImagePath = imagePath.String
@@ -232,17 +265,22 @@ func getPosts() ([]Post, error) {
 	return posts, nil
 }
 
-func addCommente(postID int, content string) error {
-	db, err := sql.Open("sqlite", "database/database.db")
+func addCommente(postID int, userID string, content string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	uid, err := getUserIDValue(userID)
 	if err != nil {
 		return err
 	}
 
-	defer db.Close()
 	_, err = db.Exec(`
 	INSERT INTO comments (post_id, user_id, content) 
 	VALUES (?, ?, ?);
-	`, postID, 1, content)
+	`, postID, uid, content)
 	return err
 }
 
@@ -255,11 +293,11 @@ func getComments(postID string) ([]Comment, error) {
 	rows, err := db.Query(`
 	SELECT 
 		comments.id,
-		users.username,
+		COALESCE(users.full_name, users.username, 'Utilisateur'),
 		comments.content,
 		COUNT(comment_like.id) as likes
 	FROM comments 
-	JOIN users ON comments.user_id = users.id
+	LEFT JOIN users ON comments.user_id = users.id
 	LEFT JOIN comment_like ON comments.id = comment_like.comments_id
 	WHERE comments.post_id = ?
 	GROUP BY comments.id;
@@ -322,12 +360,12 @@ func insertGoogleUser(name, email, googleID string) error {
 
 	_, err = db.Exec(
 		"INSERT INTO users (full_name, username, email, google_id) VALUES (?, ?, ?, ?)",
-		name, email, email, googleID,
+		name, name, email, googleID,
 	)
 	return err
 }
 
-func likepost(postid string) error {
+func likepost(postid string, userID string) error {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return err
@@ -336,13 +374,13 @@ func likepost(postid string) error {
 
 	_, err = db.Exec(
 		"INSERT INTO post_like (post_id, user_id) VALUES (?, ?)",
-		postid, 1,
+		postid, userID,
 	)
 
 	return err
 }
 
-func likecomment(commentid string) error {
+func likecomment(commentid string, userID string) error {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return err
@@ -351,13 +389,13 @@ func likecomment(commentid string) error {
 
 	_, err = db.Exec(
 		"INSERT INTO comment_like (comments_id, user_id) VALUES (?, ?)",
-		commentid, 1,
+		commentid, userID,
 	)
 
 	return err
 }
 
-func deletelikecomment(commentid string) error {
+func deletelikecomment(commentid string, userID string) error {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return err
@@ -365,13 +403,13 @@ func deletelikecomment(commentid string) error {
 	defer db.Close()
 
 	_, err = db.Exec("DELETE FROM comment_like WHERE comments_id = ? AND user_id = ?;",
-		commentid, 1,
+		commentid, userID,
 	)
 
 	return err
 }
 
-func deletelikepost(postid string) error {
+func deletelikepost(postid string, userID string) error {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return err
@@ -379,7 +417,7 @@ func deletelikepost(postid string) error {
 	defer db.Close()
 
 	_, err = db.Exec("DELETE FROM post_like WHERE post_id = ? AND user_id = ?;",
-		postid, 1,
+		postid, userID,
 	)
 
 	return err

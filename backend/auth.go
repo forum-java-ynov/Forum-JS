@@ -11,17 +11,19 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
+// -- Structs --
+
 type LoginData struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
 type RegisterData struct {
-	Namecomplet   string `json:"full_name"`
-	Username      string `json:"username"`
-	Email         string `json:"email"`
-	Password      string `json:"password"`
-	VerifPassword string `json:"confirm_password"`
+	FullName        string `json:"full_name"`
+	Username        string `json:"username"`
+	Email           string `json:"email"`
+	Password        string `json:"password"`
+	ConfirmPassword string `json:"confirm_password"`
 }
 
 type GoogleUserInfo struct {
@@ -31,7 +33,10 @@ type GoogleUserInfo struct {
 	Picture string `json:"picture"`
 }
 
-// Config OAuth Google
+// -- OAuth config --
+
+// oauthStateToken is used to prevent CSRF attacks.
+const oauthStateToken = "csrf-state-token"
 
 var googleOauthConfig = &oauth2.Config{
 	ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
@@ -41,79 +46,9 @@ var googleOauthConfig = &oauth2.Config{
 	Endpoint:     google.Endpoint,
 }
 
-// code de sécu pas sécu
-const oauthStateToken = "etat-csrf-a-randomiser"
-
-func login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Methode non autorisee", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var data LoginData
-	if err := decodeRequest(r, &data); err != nil {
-		http.Error(w, "Requete invalide", http.StatusBadRequest)
-		return
-	}
-
-	data.Username = strings.TrimSpace(data.Username)
-	if data.Username == "" || data.Password == "" {
-		http.Error(w, "Tous les champs sont obligatoires", http.StatusBadRequest)
-		return
-	}
-
-	result, err := loginUser(data.Username, data.Password)
-	if err != nil {
-		http.Error(w, "Erreur lors de la connexion", http.StatusInternalServerError)
-		return
-	}
-
-	if result {
-		http.SetCookie(w, &http.Cookie{
-			Name:     "user_email",
-			Value:    data.Username,
-			Path:     "/",
-			HttpOnly: true,
-		})
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
-
-	http.Error(w, "Nom d'utilisateur ou mot de passe incorrect", http.StatusUnauthorized)
-}
-
-func register(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Methode non autorisee", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var data RegisterData
-	if err := decodeRequest(r, &data); err != nil {
-		http.Error(w, "Requete invalide", http.StatusBadRequest)
-		return
-	}
-
-	data.Namecomplet = strings.TrimSpace(data.Namecomplet)
-	data.Username = strings.TrimSpace(data.Username)
-	data.Email = strings.TrimSpace(data.Email)
-
-	if data.Namecomplet == "" || data.Username == "" || data.Email == "" || data.Password == "" || data.VerifPassword == "" {
-		http.Error(w, "Tous les champs sont obligatoires", http.StatusBadRequest)
-		return
-	}
-
-	if err := insertUser(data.Namecomplet, data.Username, data.Email, data.Password, data.VerifPassword); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
-}
-
-// Handlers Google OAuth
-
-func InitOauth() {
+// InitOAuth reloads the Google OAuth config from environment variables.
+// Must be called after .env is loaded.
+func InitOAuth() {
 	googleOauthConfig = &oauth2.Config{
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
@@ -123,105 +58,194 @@ func InitOauth() {
 	}
 }
 
-// handleGoogleLogin redirect to google auth page
-func handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
-	url := googleOauthConfig.AuthCodeURL(oauthStateToken)
-	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
-}
+// -- Auth handlers --
 
-// handleGoogleCallback gets google code and user infos
-func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
-
-	if r.FormValue("state") != oauthStateToken {
-		http.Error(w, "State OAuth invalide", http.StatusBadRequest)
+func login(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	token, err := googleOauthConfig.Exchange(context.Background(), r.FormValue("code"))
+	var credentials LoginData
+	if err := decodeRequest(r, &credentials); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	credentials.Username = strings.TrimSpace(credentials.Username)
+
+	if credentials.Username == "" || credentials.Password == "" {
+		http.Error(w, "Username and password are required", http.StatusBadRequest)
+		return
+	}
+
+	ok, err := loginUser(credentials.Username, credentials.Password)
 	if err != nil {
-		http.Error(w, "Impossible d'échanger le code: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Login failed due to an internal error", http.StatusInternalServerError)
 		return
 	}
 
-	userInfo, err := fetchGoogleUserInfo(token)
+	if !ok {
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		return
+	}
+
+	session, err := getSession(w, r)
 	if err != nil {
-		http.Error(w, "Impossible de récupérer le profil Google", http.StatusInternalServerError)
+		http.Error(w, "Erreur de session", http.StatusInternalServerError)
 		return
 	}
-
-	if err := loginOrRegisterGoogleUser(userInfo); err != nil {
-		http.Error(w, "Erreur lors de la connexion Google: "+err.Error(), http.StatusInternalServerError)
+	session.Values["user_id"] = credentials.Username
+	session.Values["user_email"] = credentials.Username
+	if err := session.Save(r, w); err != nil {
+		http.Error(w, "Erreur de session", http.StatusInternalServerError)
 		return
 	}
-
-	name := userInfo.Name
-	if name == "" {
-		name = userInfo.Email
-	}
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "user_email",
-		Value:    userInfo.Email,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "user_picture",
-		Value:    userInfo.Picture,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "name",
-		Value:    name,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func handleMe(w http.ResponseWriter, r *http.Request) {
+func register(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-	cookie, err := r.Cookie("user_email")
+	var formData RegisterData
+	if err := decodeRequest(r, &formData); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	formData.FullName = strings.TrimSpace(formData.FullName)
+	formData.Username = strings.TrimSpace(formData.Username)
+	formData.Email = strings.TrimSpace(formData.Email)
+
+	if formData.FullName == "" || formData.Username == "" || formData.Email == "" ||
+		formData.Password == "" || formData.ConfirmPassword == "" {
+		http.Error(w, "All fields are required", http.StatusBadRequest)
+		return
+	}
+
+	if err := insertUser(formData.FullName, formData.Username, formData.Email, formData.Password, formData.ConfirmPassword); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+func handleLogout(w http.ResponseWriter, r *http.Request) {
+	session, err := getSession(w, r)
 	if err != nil {
+		http.Error(w, "Erreur de session", http.StatusInternalServerError)
+		return
+	}
+	session.Options.MaxAge = -1
+	if err := session.Save(r, w); err != nil {
+		http.Error(w, "Impossible de supprimer la session", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+// handleMe returns the currently logged-in user's info as JSON.
+func handleMe(w http.ResponseWriter, r *http.Request) {
+	session, err := getSession(w, r)
+	if err != nil {
+		http.Error(w, "Erreur de session", http.StatusInternalServerError)
+		return
+	}
+
+	id, _ := session.Values["user_id"].(string)
+	if id == "" {
 		http.Error(w, "Non connecté", http.StatusUnauthorized)
 		return
 	}
 
-	pictureCookie, _ := r.Cookie("user_picture")
-	nameCookie, _ := r.Cookie("name")
-
-	picture := ""
-	name := ""
-
-	if pictureCookie != nil {
-		picture = pictureCookie.Value
+	email, _ := session.Values["user_email"].(string)
+	picture, _ := session.Values["user_picture"].(string)
+	name, _ := session.Values["user_name"].(string)
+	if name == "" {
+		if email != "" {
+			name = email
+		} else {
+			name = id
+		}
 	}
-
-	if nameCookie != nil && nameCookie.Value != "" {
-		name = nameCookie.Value
-	} else {
-		name = cookie.Value
+	if email == "" {
+		email = id
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-
 	json.NewEncoder(w).Encode(map[string]string{
-		"email":   cookie.Value,
+		"id":      id,
+		"email":   email,
 		"picture": picture,
 		"name":    name,
 	})
 }
 
-// fetchGoogleUserInfo calls google api to fetch profile
+// -- Google OAuth handlers --
+
+// handleGoogleLogin redirects the user to Google's consent screen.
+func handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
+	redirectURL := googleOauthConfig.AuthCodeURL(oauthStateToken)
+	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+}
+
+// handleGoogleCallback handles the redirect from Google after the user consents.
+func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	if r.FormValue("state") != oauthStateToken {
+		http.Error(w, "Invalid OAuth state", http.StatusBadRequest)
+		return
+	}
+
+	token, err := googleOauthConfig.Exchange(context.Background(), r.FormValue("code"))
+	if err != nil {
+		http.Error(w, "Failed to exchange authorization code: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	userInfo, err := fetchGoogleUserInfo(token)
+	if err != nil {
+		http.Error(w, "Failed to fetch Google profile", http.StatusInternalServerError)
+		return
+	}
+
+	if err := loginOrRegisterGoogleUser(userInfo); err != nil {
+		http.Error(w, "Google login failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	displayName := userInfo.Name
+	if displayName == "" {
+		displayName = userInfo.Email
+	}
+
+	session, err := getSession(w, r)
+	if err != nil {
+		http.Error(w, "Erreur de session", http.StatusInternalServerError)
+		return
+	}
+	session.Values["user_id"] = userInfo.Email
+	session.Values["user_email"] = userInfo.Email
+	session.Values["user_name"] = displayName
+	session.Values["user_picture"] = userInfo.Picture
+	if err := session.Save(r, w); err != nil {
+		http.Error(w, "Impossible de sauvegarder la session", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// -- Helpers --
+
+// fetchGoogleUserInfo calls the Google userinfo endpoint and returns the profile.
 func fetchGoogleUserInfo(token *oauth2.Token) (*GoogleUserInfo, error) {
 	client := googleOauthConfig.Client(context.Background(), token)
+
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
 		return nil, err
@@ -232,12 +256,12 @@ func fetchGoogleUserInfo(token *oauth2.Token) (*GoogleUserInfo, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
 		return nil, err
 	}
+
 	return &userInfo, nil
 }
 
-// loginOrRegisterGoogleUser insert user if doesn't exist
+// loginOrRegisterGoogleUser creates a new account if the Google user doesn't exist yet.
 func loginOrRegisterGoogleUser(user *GoogleUserInfo) error {
-	// Vérifie si l'utilisateur existe déjà via son email
 	exists, err := userExistsByEmail(user.Email)
 	if err != nil {
 		return err
@@ -250,6 +274,7 @@ func loginOrRegisterGoogleUser(user *GoogleUserInfo) error {
 	return nil
 }
 
+// decodeRequest parses the request body into target, supporting both JSON and form data.
 func decodeRequest(r *http.Request, target any) error {
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
 		return json.NewDecoder(r.Body).Decode(target)
@@ -259,29 +284,37 @@ func decodeRequest(r *http.Request, target any) error {
 		return err
 	}
 
-	switch data := target.(type) {
+	switch dst := target.(type) {
 	case *LoginData:
-		data.Username = r.FormValue("username")
-		data.Password = r.FormValue("password")
+		dst.Username = r.FormValue("username")
+		dst.Password = r.FormValue("password")
 	case *RegisterData:
-		data.Namecomplet = r.FormValue("full_name")
-		data.Username = r.FormValue("username")
-		data.Email = r.FormValue("email")
-		data.Password = r.FormValue("password")
-		data.VerifPassword = r.FormValue("confirm_password")
+		dst.FullName = r.FormValue("full_name")
+		dst.Username = r.FormValue("username")
+		dst.Email = r.FormValue("email")
+		dst.Password = r.FormValue("password")
+		dst.ConfirmPassword = r.FormValue("confirm_password")
 	}
 
 	return nil
 }
 
-func handleLogout(w http.ResponseWriter, r *http.Request) {
-    for _, name := range []string{"user_email", "user_picture", "name"} {
-        http.SetCookie(w, &http.Cookie{
-            Name:   name,
-            Value:  "",
-            Path:   "/",
-            MaxAge: -1,
-        })
-    }
-    http.Redirect(w, r, "/", http.StatusSeeOther)
+// setSessionCookie sets an HttpOnly session cookie with sensible defaults.
+func setSessionCookie(w http.ResponseWriter, name, value string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     name,
+		Value:    value,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// cookieValueOrEmpty returns the cookie value, or an empty string if it doesn't exist.
+func cookieValueOrEmpty(r *http.Request, name string) string {
+	c, err := r.Cookie(name)
+	if err != nil {
+		return ""
+	}
+	return c.Value
 }

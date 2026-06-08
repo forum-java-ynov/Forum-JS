@@ -82,20 +82,20 @@ func Server() {
 	})
 	//auth google
 	http.HandleFunc("/auth/logout", handleLogout)
-	http.HandleFunc("/api/me", handleMe)
+	http.HandleFunc("/api/me", isAuthenticated(handleMe))
 	http.HandleFunc("/auth/google/login", handleGoogleLogin)
 	http.HandleFunc("/auth/google/callback", handleGoogleCallback)
 
 	//appel db
 	http.HandleFunc("/db/register", register)
 	http.HandleFunc("/db/login", login)
-	http.HandleFunc("/db/create_post", createPost)
+	http.HandleFunc("/db/create_post", isAuthenticated(createPost))
 	http.HandleFunc("/db/posts", showPosts)
-	http.HandleFunc("/db/delete_post", deletePostHandler)
-	http.HandleFunc("/db/create_commente", createCommente)
+	http.HandleFunc("/db/delete_post", isAuthenticated(deletePostHandler))
+	http.HandleFunc("/db/create_commente", isAuthenticated(createCommente))
 	http.HandleFunc("/db/comments", showComments)
-	http.HandleFunc("/db/toggle_like", ToggleLikeHandler)
-	http.HandleFunc("/db/toggle_comment_like", ToggleCommentLikeHandler)
+	http.HandleFunc("/db/toggle_like", isAuthenticated(ToggleLikeHandler))
+	http.HandleFunc("/db/toggle_comment_like", isAuthenticated(ToggleCommentLikeHandler))
 
 	fmt.Println("http://localhost:8082")
 	http.ListenAndServe(":8082", nil)
