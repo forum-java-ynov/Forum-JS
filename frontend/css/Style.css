@@ -1,6 +1,4 @@
-/* ============================================
-   RESET
-   ============================================ */
+/* overall page */
 
 * {
     margin: 0;
@@ -21,30 +19,8 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* ============================================
-   SCROLLBAR
-   ============================================ */
 
-::-webkit-scrollbar {
-    width: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: #000;
-}
-
-::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-/* ============================================
-   NAVBAR
-   ============================================ */
+/* navbar */
 
 nav {
     position: sticky;
@@ -106,9 +82,7 @@ nav ul li a:hover {
     color: rgba(255, 255, 255, 0.82);
 }
 
-/* ============================================
-   HERO
-   ============================================ */
+/* content */
 
 .hero {
     position: relative;
@@ -157,9 +131,7 @@ nav ul li a:hover {
     flex-wrap: wrap;
 }
 
-/* ============================================
-   BUTTONS
-   ============================================ */
+/*buttons*/
 
 .btn-secondary,
 .btn-submit,
@@ -220,9 +192,7 @@ nav ul li a:hover {
     transform: translateY(-1px);
 }
 
-/* ============================================
-   SECTION
-   ============================================ */
+/* section */
 
 .section {
     width: 100%;
@@ -243,9 +213,7 @@ nav ul li a:hover {
     margin-bottom: 70px;
 }
 
-/* ============================================
-   POST CONTAINER
-   ============================================ */
+/* post container */
 
 #postContainer,
 #post {
@@ -256,9 +224,7 @@ nav ul li a:hover {
     gap: 28px;
 }
 
-/* ============================================
-   POST CARD
-   ============================================ */
+/* post card*/
 
 .post-card {
     width: min(900px, 95%);
@@ -308,9 +274,7 @@ nav ul li a:hover {
     letter-spacing: 0.06em;
 }
 
-/* ============================================
-   POST CARD FOOTER
-   ============================================ */
+/* post card footer*/
 
 .post-card-footer {
     display: flex;
@@ -358,9 +322,7 @@ nav ul li a:hover {
     font-size: 14px;
 }
 
-/* ============================================
-   COMMENTS
-   ============================================ */
+/* comments */
 
 .post-comments-wrapper {
     display: flex;
@@ -415,9 +377,7 @@ nav ul li a:hover {
     opacity: 0.8;
 }
 
-/* ============================================
-   MODALS / OVERLAYS
-   ============================================ */
+/* comments overlay*/
 
 .comment-overlay {
     display: none;
@@ -464,9 +424,7 @@ nav ul li a:hover {
     margin-bottom: 28px;
 }
 
-/* ============================================
-   FORMS (inside modals)
-   ============================================ */
+/* forms */
 
 #postForm,
 #commenteForm {
@@ -563,9 +521,7 @@ nav ul li a:hover {
     margin-top: 16px;
 }
 
-/* ============================================
-   EMPTY STATE
-   ============================================ */
+/* empty state*/
 
 .empty-state,
 .empty-posts {
@@ -575,9 +531,7 @@ nav ul li a:hover {
     color: rgba(255, 255, 255, 0.25);
 }
 
-/* ============================================
-   AUTH PAGES (login / register)
-   ============================================ */
+/* login & register */
 
 body.auth-page {
     display: flex;
@@ -659,10 +613,7 @@ body.auth-page br {
     display: none;
 }
 
-/* ============================================
-   HTML CLASS ALIASES
-   Keep these in sync with frontend/html/index.html
-   ============================================ */
+
 
 .posts,
 .create-commente-pop {
@@ -852,9 +803,7 @@ body.auth-page br {
     color: rgba(255, 255, 255, 0.25);
 }
 
-/* ============================================
-   RESPONSIVE
-   ============================================ */
+/* responsiveness */
 
 @media (max-width: 768px) {
     .hero {
