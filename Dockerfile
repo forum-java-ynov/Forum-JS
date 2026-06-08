@@ -31,6 +31,10 @@ COPY --from=builder /app/main .
 # Copie les fichiers statiques du frontend
 COPY --from=builder /app/frontend ./frontend
 
+# Copie des certificats
+COPY --from=builder /app/cert.pem .
+COPY --from=builder /app/key.pem .
+
 # Expose le port
 EXPOSE 8082
 
