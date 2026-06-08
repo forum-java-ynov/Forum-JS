@@ -7,6 +7,6 @@ openssl req -x509 -newkey rsa:4096 \
   -out cert.pem \
   -days 365 \
   -nodes \
-  -subj "/C=FR/ST=France/L=Paris/O=Forum-JS/CN=localhost"
+  -subj "//C=FR\ST=France\L=Paris\O=Forum-JS\CN=localhost"
 
 echo "Certificats générés : cert.pem et key.pem"
