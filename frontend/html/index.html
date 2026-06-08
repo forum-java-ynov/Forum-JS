@@ -112,26 +112,6 @@
                                     <button type="submit">Delete</button>
                                 </form>
 
-                                {{ if .Comments }}
-                                    <div class="comments">
-                                        {{ range .Comments }}
-                                            <div class="comment">
-                                                <strong>{{ .Username }}</strong>
-                                                <p>{{ .Content }}</p>
-                                                <p>Likes: {{ .Likes }}</p>
-                                                <form action="/db/toggle_comment_like?id={{ .ID }}" method="post">
-                                                    <button type="submit">Like</button>
-                                                </form>
-                                            </div>
-                                        {{ end }}
-                                    </div>
-                                {{ end }}
-                            </article>
-                        {{ end }}
-                    {{ else }}
-                        <p class="empty-posts">Aucun post pour le moment.</p>
-                    {{ end }}
-                </div>
                             {{ if .Comments }}
                                 <div class="comments">
                                     {{ range .Comments }}
