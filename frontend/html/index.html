@@ -92,7 +92,7 @@
                             {{ if .ImagePath }}
                                 <img src="/uploads/{{ .ImagePath }}" alt="{{ .Title }}">
                             {{ end }}
-                            <p>Likes: {{ .Likes }}</p>
+                            <p>Likes: <span id="post-like-{{ .ID }}">{{ .Likes }}</span></p>
 
                             <form action="/db/toggle_like?id={{ .ID }}" method="post">
                                 <button type="submit">Like</button>
@@ -111,7 +111,7 @@
                                         <div class="comment">
                                             <strong>{{ .Username }}</strong>
                                             <p>{{ .Content }}</p>
-                                            <p>Likes: {{ .Likes }}</p>
+                                            <p>Likes: <span id="comment-like-{{ .ID }}">{{ .Likes }}</span></p>
                                             <form action="/db/toggle_comment_like?id={{ .ID }}" method="post">
                                                 <button type="submit">Like</button>
                                             </form>
