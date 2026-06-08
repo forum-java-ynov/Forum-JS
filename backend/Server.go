@@ -70,7 +70,7 @@ func Server() {
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("frontend/css"))))
 	http.Handle("/frontend/", http.StripPrefix("/frontend/", http.FileServer(http.Dir("frontend"))))
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
-	
+
 	//routes
 	http.HandleFunc("/", showIndex)
 
@@ -97,7 +97,7 @@ func Server() {
 	http.HandleFunc("/db/toggle_like", ToggleLikeHandler)
 	http.HandleFunc("/db/toggle_comment_like", ToggleCommentLikeHandler)
 
-	fmt.Println("http://localhost:8082")
-	http.ListenAndServe(":8082", nil)
+	fmt.Println("https://localhost:8082")
+	http.ListenAndServeTLS(":8082", "cert.pem", "key.pem", nil)
 
 }

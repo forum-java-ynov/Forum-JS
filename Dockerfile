@@ -7,6 +7,8 @@ WORKDIR /app
 
 # Copie les fichiers de dépendances
 COPY go.mod go.sum ./
+COPY cert.pem .
+COPY key.pem .
 
 # Télécharge les dépendances
 RUN go mod download
