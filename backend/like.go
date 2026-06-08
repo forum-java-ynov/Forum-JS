@@ -2,6 +2,7 @@ package backend
 
 import (
 	"database/sql"
+	"encoding/json"
 	"net/http"
 )
 
@@ -66,6 +67,28 @@ func toggleCommentLike(commentid string) error {
 	return likecomment(commentid)
 }
 
+func getPostLikeCount(postID string) (int, error) {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return 0, err
+	}
+	defer db.Close()
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM post_like WHERE post_id = ?", postID).Scan(&count)
+	return count, err
+}
+
+func getCommentLikeCount(commentID string) (int, error) {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return 0, err
+	}
+	defer db.Close()
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM comment_like WHERE comments_id = ?", commentID).Scan(&count)
+	return count, err
+}
+
 func ToggleCommentLikeHandler(w http.ResponseWriter, r *http.Request) {
 	commentID := r.URL.Query().Get("id")
 
@@ -76,7 +99,9 @@ func ToggleCommentLikeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	count, _ := getCommentLikeCount(commentID)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"likes": count})
 }
 
 func ToggleLikeHandler(w http.ResponseWriter, r *http.Request) {
@@ -90,5 +115,7 @@ func ToggleLikeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	count, _ := getPostLikeCount(postID)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"likes": count})
 }
