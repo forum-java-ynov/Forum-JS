@@ -7,8 +7,6 @@ WORKDIR /app
 
 # Copie les fichiers de dépendances
 COPY go.mod go.sum ./
-COPY cert.pem .
-COPY key.pem .
 
 # Télécharge les dépendances
 RUN go mod download
@@ -30,10 +28,6 @@ COPY --from=builder /app/main .
 
 # Copie les fichiers statiques du frontend
 COPY --from=builder /app/frontend ./frontend
-
-# Copie des certificats
-COPY --from=builder /app/cert.pem .
-COPY --from=builder /app/key.pem .
 
 # Expose le port
 EXPOSE 8082

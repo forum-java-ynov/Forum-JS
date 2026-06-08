@@ -2,7 +2,6 @@ services:
   forum:
     build: . # Build l'image
     ports:
-      - "8083:8083" # Expose le port 8080 pour la redirection
       - "8082:8082" # Expose le port 8082 du conteneur
     environment:
       - ENV=production # Active le mode production dans l'app Go

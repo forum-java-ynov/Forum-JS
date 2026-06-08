@@ -97,12 +97,6 @@ func Server() {
 	http.HandleFunc("/db/toggle_like", ToggleLikeHandler)
 	http.HandleFunc("/db/toggle_comment_like", ToggleCommentLikeHandler)
 
-	// Redirige HTTP vers HTTPS
-	go http.ListenAndServe(":8083", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "https://localhost:8082"+r.RequestURI, http.StatusMovedPermanently)
-	}))
-
-	fmt.Println("https://localhost:8082")
-	http.ListenAndServeTLS(":8082", "cert.pem", "key.pem", nil)
-
+	fmt.Println("http://localhost:8082")
+	http.ListenAndServe(":8082", nil)
 }
