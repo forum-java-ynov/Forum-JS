@@ -1,15 +1,26 @@
 package backend
 
 import (
+	"database/sql"
 	"encoding/json"
+	"fmt"
+	"image"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
+
+	"github.com/disintegration/imaging"
+	"github.com/google/uuid"
 )
 
 const uploadDir = "uploads"
+const maxImageSize = 800
+var allowedTypes = map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true}
 
 func createPost(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
@@ -22,33 +33,61 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 	imagePath := ""
 	theme := r.FormValue("theme")
 
+	userID, err := getCurrentUserID(nil, r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	file, handler, err := r.FormFile("image")
 	if err == nil {
 		defer file.Close()
+
+		ext := strings.ToLower(filepath.Ext(handler.Filename))
+		if !allowedTypes[ext] {
+			http.Error(w, "Type de fichier non autorisé", http.StatusBadRequest)
+			return
+		}
 
 		if err := os.MkdirAll(uploadDir, 0755); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		imagePath = filepath.Base(handler.Filename)
-		dst, err := os.Create(filepath.Join(uploadDir, imagePath))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		img, _, decodeErr := image.Decode(file)
+		if decodeErr != nil {
+			http.Error(w, "Impossible de décoder l'image", http.StatusBadRequest)
+			return
+		}
+
+		resizedImg := imaging.Fit(img, maxImageSize, maxImageSize, imaging.Lanczos)
+
+		imagePath = fmt.Sprintf("%s%s", uuid.New().String(), ext)
+		dstPath := filepath.Join(uploadDir, imagePath)
+		dst, createErr := os.Create(dstPath)
+		if createErr != nil {
+			http.Error(w, createErr.Error(), http.StatusInternalServerError)
 			return
 		}
 		defer dst.Close()
 
-		if _, err := io.Copy(dst, file); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		switch ext {
+		case ".jpg", ".jpeg":
+			jpeg.Encode(dst, resizedImg, &jpeg.Options{Quality: 85})
+		case ".png":
+			png.Encode(dst, resizedImg)
+		}
+
+		if ext == ".gif" || ext == ".webp" {
+			file.Seek(0, 0)
+			io.Copy(dst, file)
 		}
 	} else if err != http.ErrMissingFile {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	addPost(title, content, imagePath, theme)
+	addPost(title, content, imagePath, theme, userID)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -81,6 +120,11 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	imagePath, imgErr := getImagePath(id)
+	if imgErr == nil && imagePath != "" {
+		os.Remove(filepath.Join(uploadDir, imagePath))
+	}
+
 	if err := deletePost(id); err != nil {
 		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
 		return
@@ -92,4 +136,22 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func getImagePath(id int) (string, error) {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return "", err
+	}
+	defer db.Close()
+
+	var imagePath sql.NullString
+	err = db.QueryRow("SELECT image_path FROM posts WHERE id = ?;", id).Scan(&imagePath)
+	if err != nil {
+		return "", err
+	}
+	if imagePath.Valid {
+		return imagePath.String, nil
+	}
+	return "", nil
 }

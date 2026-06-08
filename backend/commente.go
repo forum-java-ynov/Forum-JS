@@ -24,7 +24,13 @@ func createCommente(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := addCommente(postID, content); err != nil {
+	userID, err := getCurrentUserID(w, r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := addCommente(postID, userID, content); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
