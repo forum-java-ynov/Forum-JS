@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
@@ -57,81 +56,66 @@ func CreateTables() {
 	}
 	defer db.Close()
 
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		full_name TEXT NOT NULL,
-		username TEXT NOT NULL UNIQUE,
-		email TEXT NOT NULL UNIQUE,
-		password TEXT,
-	    google_id TEXT
-	);
-	`)
+	queries := []string{
+		`CREATE TABLE IF NOT EXISTS users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			full_name TEXT NOT NULL,
+			username TEXT NOT NULL UNIQUE,
+			email TEXT NOT NULL UNIQUE,
+			password TEXT,
+			google_id TEXT
+		);`,
+		`CREATE TABLE IF NOT EXISTS posts (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			title TEXT NOT NULL,
+			content TEXT NOT NULL,
+			image_path TEXT,
+			theme TEXT,
+			user_id INTEGER NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
+		`CREATE TABLE IF NOT EXISTS comments (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			post_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			content TEXT NOT NULL,
+			FOREIGN KEY (post_id) REFERENCES posts(id),
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
+		`CREATE TABLE IF NOT EXISTS post_like (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			post_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			FOREIGN KEY (post_id) REFERENCES posts(id),
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
+		`CREATE TABLE IF NOT EXISTS post_dislike (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			post_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			FOREIGN KEY (post_id) REFERENCES posts(id),
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
+		`CREATE TABLE IF NOT EXISTS comment_like (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			comments_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			FOREIGN KEY (comments_id) REFERENCES comments(id),
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
+		`CREATE TABLE IF NOT EXISTS comment_dislike (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			comments_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			FOREIGN KEY (comments_id) REFERENCES comments(id),
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
+	}
 
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS posts (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		title TEXT NOT NULL,
-		content TEXT NOT NULL,
-		image_path TEXT,
-		theme TEXT,
-		user_id INTEGER NOT NULL,
-		FOREIGN KEY (user_id) REFERENCES users(id)
-	);
-	`)
-
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS comments (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		post_id INTEGER NOT NULL,
-		user_id INTEGER NOT NULL,
-		content TEXT NOT NULL,
-		FOREIGN KEY (post_id) REFERENCES posts(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
-	);
-	`)
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS post_like (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		post_id INTEGER NOT NULL,
-		user_id INTEGER NOT NULL,
-		FOREIGN KEY (post_id) REFERENCES posts(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
-	);
-	`)
-
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS post_dislike (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		post_id INTEGER NOT NULL,
-		user_id INTEGER NOT NULL,
-		FOREIGN KEY (post_id) REFERENCES posts(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
-	);
-	`)
-
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS comment_like (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		comments_id INTEGER NOT NULL,
-		user_id INTEGER NOT NULL,
-		FOREIGN KEY (comments_id) REFERENCES comments(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
-	);
-	`)
-
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS comment_dislike (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		comments_id INTEGER NOT NULL,
-		user_id INTEGER NOT NULL,
-		FOREIGN KEY (comments_id) REFERENCES comments(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
-	);
-	`)
-
-	if err != nil {
-		log.Fatal(err)
+	for _, q := range queries {
+		if _, err := db.Exec(q); err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -196,10 +180,6 @@ func loginUser(username, password string) (bool, error) {
 }
 
 func getUserIDValue(userID string) (interface{}, error) {
-	if id, err := strconv.Atoi(userID); err == nil {
-		return id, nil
-	}
-
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
@@ -207,8 +187,14 @@ func getUserIDValue(userID string) (interface{}, error) {
 	defer db.Close()
 
 	var id int
-	err = db.QueryRow("SELECT id FROM users WHERE username = ? OR email = ?;", userID, userID).Scan(&id)
+	err = db.QueryRow(
+		"SELECT id FROM users WHERE username = ? OR email = ? OR google_id = ?;",
+		userID, userID, userID,
+	).Scan(&id)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("utilisateur introuvable pour l'identifiant %q", userID)
+		}
 		return nil, err
 	}
 
@@ -242,6 +228,7 @@ func getPosts() ([]Post, error) {
 		return nil, err
 	}
 	defer db.Close()
+
 	rows, err := db.Query(`
 		SELECT 
 			posts.id,
@@ -258,8 +245,6 @@ func getPosts() ([]Post, error) {
 		LEFT JOIN users ON posts.user_id = users.id
 		GROUP BY posts.id;
 	`)
-	var likes int
-
 	if err != nil {
 		return nil, err
 	}
@@ -267,10 +252,9 @@ func getPosts() ([]Post, error) {
 
 	var posts []Post
 	for rows.Next() {
-		var id int
+		var id, likes, dislikes int
 		var title, content, theme, username string
 		var imagePath sql.NullString
-		var dislikes int
 		if err := rows.Scan(&id, &title, &content, &imagePath, &theme, &username, &likes, &dislikes); err != nil {
 			return nil, err
 		}
@@ -311,11 +295,12 @@ func addCommente(postID int, userID string, content string) error {
 }
 
 func getComments(postID string) ([]Comment, error) {
-	db, err := sql.Open("sqlite", "database/database.db")
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
+
 	rows, err := db.Query(`
 	SELECT 
 		comments.id,
@@ -337,20 +322,18 @@ func getComments(postID string) ([]Comment, error) {
 
 	var comments []Comment
 	for rows.Next() {
-		var id int
+		var id, likes, dislikes int
 		var username, content string
-		var likes, dislikes int
 		if err := rows.Scan(&id, &username, &content, &likes, &dislikes); err != nil {
 			return nil, err
 		}
-		comment := Comment{
+		comments = append(comments, Comment{
 			ID:       id,
 			Username: username,
 			Content:  content,
 			Likes:    likes,
 			Dislikes: dislikes,
-		}
-		comments = append(comments, comment)
+		})
 	}
 	return comments, nil
 }
@@ -362,12 +345,10 @@ func deletePost(id int) error {
 	}
 	defer db.Close()
 
-	_, err = db.Exec(`
-	DELETE FROM posts WHERE id = ?;`, id)
+	_, err = db.Exec(`DELETE FROM posts WHERE id = ?;`, id)
 	return err
 }
 
-// google auth
 func userExistsByEmail(email string) (bool, error) {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -401,11 +382,7 @@ func likepost(postid string, userID string) error {
 	}
 	defer db.Close()
 
-	_, err = db.Exec(
-		"INSERT INTO post_like (post_id, user_id) VALUES (?, ?)",
-		postid, userID,
-	)
-
+	_, err = db.Exec("INSERT INTO post_like (post_id, user_id) VALUES (?, ?)", postid, userID)
 	return err
 }
 
@@ -416,11 +393,7 @@ func dislikepost(postid string, userID string) error {
 	}
 	defer db.Close()
 
-	_, err = db.Exec(
-		"INSERT INTO post_dislike (post_id, user_id) VALUES (?, ?)",
-		postid, userID,
-	)
-
+	_, err = db.Exec("INSERT INTO post_dislike (post_id, user_id) VALUES (?, ?)", postid, userID)
 	return err
 }
 
@@ -431,11 +404,7 @@ func likecomment(commentid string, userID string) error {
 	}
 	defer db.Close()
 
-	_, err = db.Exec(
-		"INSERT INTO comment_like (comments_id, user_id) VALUES (?, ?)",
-		commentid, userID,
-	)
-
+	_, err = db.Exec("INSERT INTO comment_like (comments_id, user_id) VALUES (?, ?)", commentid, userID)
 	return err
 }
 
@@ -446,11 +415,7 @@ func dislikecomment(commentid string, userID string) error {
 	}
 	defer db.Close()
 
-	_, err = db.Exec(
-		"INSERT INTO comment_dislike (comments_id, user_id) VALUES (?, ?)",
-		commentid, userID,
-	)
-
+	_, err = db.Exec("INSERT INTO comment_dislike (comments_id, user_id) VALUES (?, ?)", commentid, userID)
 	return err
 }
 
@@ -461,10 +426,7 @@ func deletelikecomment(commentid string, userID string) error {
 	}
 	defer db.Close()
 
-	_, err = db.Exec("DELETE FROM comment_like WHERE comments_id = ? AND user_id = ?;",
-		commentid, userID,
-	)
-
+	_, err = db.Exec("DELETE FROM comment_like WHERE comments_id = ? AND user_id = ?;", commentid, userID)
 	return err
 }
 
@@ -475,10 +437,7 @@ func deletedislikecomment(commentid string, userID string) error {
 	}
 	defer db.Close()
 
-	_, err = db.Exec("DELETE FROM comment_dislike WHERE comments_id = ? AND user_id = ?;",
-		commentid, userID,
-	)
-
+	_, err = db.Exec("DELETE FROM comment_dislike WHERE comments_id = ? AND user_id = ?;", commentid, userID)
 	return err
 }
 
@@ -489,10 +448,7 @@ func deletelikepost(postid string, userID string) error {
 	}
 	defer db.Close()
 
-	_, err = db.Exec("DELETE FROM post_like WHERE post_id = ? AND user_id = ?;",
-		postid, userID,
-	)
-
+	_, err = db.Exec("DELETE FROM post_like WHERE post_id = ? AND user_id = ?;", postid, userID)
 	return err
 }
 
@@ -503,10 +459,7 @@ func deletedislikepost(postid string, userID string) error {
 	}
 	defer db.Close()
 
-	_, err = db.Exec("DELETE FROM post_dislike WHERE post_id = ? AND user_id = ?;",
-		postid, userID,
-	)
-
+	_, err = db.Exec("DELETE FROM post_dislike WHERE post_id = ? AND user_id = ?;", postid, userID)
 	return err
 }
 
@@ -522,9 +475,6 @@ func editcomment(commentID int, content string, userID string) error {
 		return err
 	}
 
-	_, err = db.Exec("UPDATE comments SET content = ? WHERE id = ? AND user_id = ?;",
-		content, commentID, uid,
-	)
-
+	_, err = db.Exec("UPDATE comments SET content = ? WHERE id = ? AND user_id = ?;", content, commentID, uid)
 	return err
 }
