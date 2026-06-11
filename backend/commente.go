@@ -54,3 +54,40 @@ func showComments(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(comments)
 }
+
+func editComment(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	commentID, err := strconv.Atoi(r.FormValue("comment_id"))
+	if err != nil {
+		http.Error(w, "comment_id invalide", http.StatusBadRequest)
+		return
+	}
+
+	content := r.FormValue("content")
+	if content == "" {
+		http.Error(w, "content vide", http.StatusBadRequest)
+		return
+	}
+
+	userID, err := getCurrentUserID(w, r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := editcomment(commentID, content, userID); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
