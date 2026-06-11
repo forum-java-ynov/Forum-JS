@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -92,6 +93,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	session, err := getSession(w, r)
 	if err != nil {
+		log.Printf("getSession error: %v", err) // ← ajoute ça temporairement
 		http.Error(w, "Erreur de session", http.StatusInternalServerError)
 		return
 	}
@@ -228,11 +230,12 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Erreur de session", http.StatusInternalServerError)
 		return
 	}
-	session.Values["user_id"] = userInfo.Email
+	session.Values["user_id"] = userInfo.ID
 	session.Values["user_email"] = userInfo.Email
 	session.Values["user_name"] = displayName
 	session.Values["user_picture"] = userInfo.Picture
 	if err := session.Save(r, w); err != nil {
+
 		http.Error(w, "Impossible de sauvegarder la session", http.StatusInternalServerError)
 		return
 	}
