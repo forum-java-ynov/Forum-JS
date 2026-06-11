@@ -427,14 +427,16 @@ nav ul li a:hover {
 /* forms */
 
 #postForm,
-#commenteForm {
+#commenteForm,
+#editCommenteForm {
     display: flex;
     flex-direction: column;
     gap: 14px;
 }
 
 #postForm label,
-#commenteForm label {
+#commenteForm label,
+#editCommenteForm label {
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -444,7 +446,8 @@ nav ul li a:hover {
 #postForm input[type="text"],
 #postForm textarea,
 #postForm select,
-#commenteForm textarea {
+#commenteForm textarea,
+#editCommenteForm textarea {
     width: 100%;
     padding: 14px 16px;
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -458,7 +461,8 @@ nav ul li a:hover {
 }
 
 #postForm textarea,
-#commenteForm textarea {
+#commenteForm textarea,
+#editCommenteForm textarea {
     resize: vertical;
 }
 
@@ -489,14 +493,16 @@ nav ul li a:hover {
 #postForm input:focus,
 #postForm textarea:focus,
 #postForm select:focus,
-#commenteForm textarea:focus {
+#commenteForm textarea:focus,
+#editCommenteForm textarea:focus {
     border-color: rgba(41, 151, 255, 0.55);
     background: rgba(255, 255, 255, 0.07);
 }
 
 #postForm input::placeholder,
 #postForm textarea::placeholder,
-#commenteForm textarea::placeholder {
+#commenteForm textarea::placeholder,
+#editCommenteForm textarea::placeholder {
     color: rgba(255, 255, 255, 0.24);
 }
 
@@ -773,8 +779,14 @@ body.auth-page br {
     color: rgba(255, 255, 255, 0.38);
 }
 
-.comment form {
+.comment-actions {
     grid-area: action;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.comment form {
     margin: 0;
 }
 

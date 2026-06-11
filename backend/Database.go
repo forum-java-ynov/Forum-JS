@@ -422,3 +422,22 @@ func deletelikepost(postid string, userID string) error {
 
 	return err
 }
+
+func editcomment(commentID int, content string, userID string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	uid, err := getUserIDValue(userID)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec("UPDATE comments SET content = ? WHERE id = ? AND user_id = ?;",
+		content, commentID, uid,
+	)
+
+	return err
+}

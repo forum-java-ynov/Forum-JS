@@ -16,8 +16,25 @@ function showCommenteCreationForm(postId) {
     if (popup) popup.style.display = "flex";
 }
 
+function showEditForm(commentId) {
+    const popup = document.getElementById("edit-comment-pop");
+    const commentInput = document.getElementById("edit-comment-id");
+    const contentArea = document.getElementById("edit-content-commente");
+    const currentContent = document.getElementById("comment-content-" + commentId);
+
+    if (commentInput) commentInput.value = commentId;
+    if (contentArea && currentContent) contentArea.value = currentContent.innerText;
+
+    if (popup) popup.style.display = "flex";
+}
+
 function closeCommentePopup() {
     const popup = document.getElementById("create-commente-pop");
+    if (popup) popup.style.display = "none";
+}
+
+function closeEditPopup() {
+    const popup = document.getElementById("edit-comment-pop");
     if (popup) popup.style.display = "none";
 }
 
