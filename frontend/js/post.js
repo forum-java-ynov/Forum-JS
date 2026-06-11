@@ -39,7 +39,7 @@ function closeEditPopup() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    const actionForms = document.querySelectorAll('form[action^="/db/toggle_like"], form[action^="/db/toggle_comment_like"], form[action^="/db/delete_post"]');
+    const actionForms = document.querySelectorAll('form[action^="/db/toggle_like"], form[action^="/db/toggle_dislike"], form[action^="/db/toggle_comment_like"], form[action^="/db/toggle_comment_dislike"], form[action^="/db/delete_post"]');
 
     actionForms.forEach(form => {
         form.addEventListener('submit', async (event) => {
@@ -51,33 +51,14 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 const response = await fetch(url, {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
                 });
                 
                 if (response.ok) {
-                    if (url.includes('like')) {
-                        const data = await response.json();
-                        const urlParams = new URLSearchParams(url.split('?')[1]);
-                        const targetId = urlParams.get('id');
-                        const spanId = url.includes('toggle_comment_like') ? `comment-like-${targetId}` : `post-like-${targetId}`;
-                        const span = document.getElementById(spanId);
-                        if (span) span.textContent = data.likes;
-                        
-                        const btn = form.querySelector('button[type="submit"]');
-                        if (btn) {
-                            if (btn.textContent === "Liké") {
-                                btn.textContent = "Like";
-                                btn.style.backgroundColor = "";
-                                btn.style.color = "";
-                            } else {
-                                btn.textContent = "Liké";
-                                btn.style.backgroundColor = "#ff002f"; 
-                                btn.style.color = "white";
-                            }
-                        }
-                    } else if (url.includes('delete_post')) {
-                        form.closest('article').style.display = 'none';
-                    }
+                    location.reload();
                 }
             } catch (error) {
                 console.error("Erreur de réseau :", error);

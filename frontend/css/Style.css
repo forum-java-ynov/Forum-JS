@@ -192,6 +192,115 @@ nav ul li a:hover {
     transform: translateY(-1px);
 }
 
+.btn-like,
+.btn-dislike,
+.btn-comment,
+.btn-delete,
+.btn-small {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-like {
+    background: rgba(41, 151, 255, 0.14);
+    color: #8ccfff;
+    border-color: rgba(41, 151, 255, 0.22);
+}
+
+.btn-like:hover {
+    background: rgba(41, 151, 255, 0.24);
+    transform: translateY(-1px);
+}
+
+.btn-dislike {
+    background: rgba(255, 94, 122, 0.14);
+    color: #ffb3c5;
+    border-color: rgba(255, 94, 122, 0.22);
+}
+
+.btn-dislike:hover {
+    background: rgba(255, 94, 122, 0.24);
+    transform: translateY(-1px);
+}
+
+.btn-comment {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.16);
+}
+
+.btn-comment:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.btn-delete {
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.75);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.btn-delete:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+}
+
+.btn-small {
+    padding: 8px 14px;
+    font-size: 13px;
+}
+
+.reaction-bar,
+.comment-reactions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 18px 0 12px;
+}
+
+.reaction-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+}
+
+.reaction-pill.reaction-like {
+    background: rgba(41, 151, 255, 0.12);
+    border-color: rgba(41, 151, 255, 0.22);
+}
+
+.reaction-pill.reaction-dislike {
+    background: rgba(255, 94, 122, 0.12);
+    border-color: rgba(255, 94, 122, 0.22);
+}
+
+.reaction-pill span {
+    font-weight: 700;
+    color: white;
+}
+
+.post-actions,
+.comment-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
 /* section */
 
 .section {
@@ -848,4 +957,89 @@ body.auth-page br {
     .comment-modal h2 {
         font-size: 22px;
     }
+}
+
+.comments {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 28px;
+    padding-top: 22px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.comment {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+        "author  action"
+        "content action"
+        "reactions action";
+    align-items: start;
+    column-gap: 14px;
+    row-gap: 4px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.comment:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+.comment strong {
+    grid-area: author;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.comment p {
+    grid-area: content;
+    font-size: 14px;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.72);
+    margin: 2px 0 6px;
+}
+
+.comment .comment-reactions {
+    grid-area: reactions;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 0;
+}
+
+.comment form {
+    grid-area: action;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.comment button {
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.55);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.comment button:hover {
+    background: rgba(255, 255, 255, 0.10);
+    color: #fff;
+    transform: none;
+}
+
+.comment .reaction-pill {
+    padding: 6px 12px;
+    font-size: 13px;
 }

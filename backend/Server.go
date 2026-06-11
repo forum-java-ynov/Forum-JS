@@ -96,7 +96,9 @@ func Server() {
 	http.HandleFunc("/db/comments", showComments)
 	http.HandleFunc("/db/edit_commente", isAuthenticated(editComment))
 	http.HandleFunc("/db/toggle_like", isAuthenticated(ToggleLikeHandler))
+	http.HandleFunc("/db/toggle_dislike", isAuthenticated(ToggleDislikeHandler))
 	http.HandleFunc("/db/toggle_comment_like", isAuthenticated(ToggleCommentLikeHandler))
+	http.HandleFunc("/db/toggle_comment_dislike", isAuthenticated(ToggleCommentDislikeHandler))
 
 	fmt.Println("http://localhost:8082")
 	http.ListenAndServe(":8082", nil)

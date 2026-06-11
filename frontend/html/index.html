@@ -98,30 +98,38 @@
                             {{ if .ImagePath }}
                                 <img src="/uploads/{{ .ImagePath }}" alt="{{ .Title }}">
                             {{ end }}
-                            <p>Likes: <span id="post-like-{{ .ID }}">{{ .Likes }}</span></p>
-
+                            <div class="reaction-bar">
                                 <form action="/db/toggle_like?id={{ .ID }}" method="post">
-                                    <button type="submit">Like</button>
-                                </form>
+                                <button class="reaction-pill reaction-like">👍 <span id="post-like-{{ .ID }}">{{ .Likes }}</span></button>
+                            </form>
+                            <form action="/db/toggle_dislike?id={{ .ID }}" method="post">
+                                <button class="reaction-pill reaction-dislike">👎 <span id="post-dislike-{{ .ID }}">{{ .Dislikes }}</span></button>
+                            </form>
+                            </div>
 
-                                <button type="button" onclick="showCommenteCreationForm('{{ .ID }}')">Comment</button>
-
+                            <div class="post-actions">
+                                <button class="btn-comment" type="button" onclick="showCommenteCreationForm('{{ .ID }}')">Comment</button>
                                 <form action="/db/delete_post" method="post">
                                     <input type="hidden" name="id" value="{{ .ID }}">
-                                    <button type="submit">Delete</button>
+                                    <button class="btn-delete" type="submit">Delete</button>
                                 </form>
+                            </div>
 
                             {{ if .Comments }}
                                 <div class="comments">
                                     {{ range .Comments }}
                                         <div class="comment">
                                             <strong>{{ .Username }}</strong>
-                                            <p id="comment-content-{{ .ID }}">{{ .Content }}</p>
-                                            <p>Likes: <span id="comment-like-{{ .ID }}">{{ .Likes }}</span></p>
-                                            <form action="/db/toggle_comment_like?id={{ .ID }}" method="post">
-                                                <button type="submit">Like</button>
-                                            </form>
-                                            <button type="button" onclick="showEditForm('{{ .ID }}')">Edit</button>
+                                            <p>{{ .Content }}</p>
+                                            <div class="comment-reactions">
+                                                <form action="/db/toggle_comment_like?id={{ .ID }}" method="post">
+                                                    <button class="reaction-pill reaction-like">👍 <span id="comment-like-{{ .ID }}">{{ .Likes }}</span></button>
+                                                </form>
+                                                <form action="/db/toggle_comment_dislike?id={{ .ID }}" method="post">
+                                                    <button class="reaction-pill reaction-dislike">👎 <span id="comment-dislike-{{ .ID }}">{{ .Dislikes }}</span></button>
+                                                </form>
+                                                <button type="button" onclick="showEditForm('{{ .ID }}')">Edit</button>
+                                            </div>
                                         </div>
                                     {{ end }}
                                 </div>

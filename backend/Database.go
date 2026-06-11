@@ -19,6 +19,7 @@ type Comment struct {
 	Username string
 	Content  string
 	Likes    int
+	Dislikes int
 }
 
 type Post struct {
@@ -29,6 +30,7 @@ type Post struct {
 	Theme     string
 	Username  string
 	Likes     int
+	Dislikes  int
 	Comments  []Comment
 }
 
@@ -99,7 +101,27 @@ func CreateTables() {
 	`)
 
 	_, err = db.Exec(`
+	CREATE TABLE IF NOT EXISTS post_dislike (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		post_id INTEGER NOT NULL,
+		user_id INTEGER NOT NULL,
+		FOREIGN KEY (post_id) REFERENCES posts(id),
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);
+	`)
+
+	_, err = db.Exec(`
 	CREATE TABLE IF NOT EXISTS comment_like (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		comments_id INTEGER NOT NULL,
+		user_id INTEGER NOT NULL,
+		FOREIGN KEY (comments_id) REFERENCES comments(id),
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	);
+	`)
+
+	_, err = db.Exec(`
+	CREATE TABLE IF NOT EXISTS comment_dislike (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		comments_id INTEGER NOT NULL,
 		user_id INTEGER NOT NULL,
@@ -228,9 +250,11 @@ func getPosts() ([]Post, error) {
 			posts.image_path,
 			posts.theme,
 			COALESCE(users.full_name, users.username, 'Utilisateur'),
-			COUNT(post_like.id) as likes
+			COUNT(DISTINCT post_like.id) as likes,
+			COUNT(DISTINCT post_dislike.id) as dislikes
 		FROM posts
 		LEFT JOIN post_like ON posts.id = post_like.post_id
+		LEFT JOIN post_dislike ON posts.id = post_dislike.post_id
 		LEFT JOIN users ON posts.user_id = users.id
 		GROUP BY posts.id;
 	`)
@@ -246,7 +270,8 @@ func getPosts() ([]Post, error) {
 		var id int
 		var title, content, theme, username string
 		var imagePath sql.NullString
-		if err := rows.Scan(&id, &title, &content, &imagePath, &theme, &username, &likes); err != nil {
+		var dislikes int
+		if err := rows.Scan(&id, &title, &content, &imagePath, &theme, &username, &likes, &dislikes); err != nil {
 			return nil, err
 		}
 		post := Post{
@@ -256,6 +281,7 @@ func getPosts() ([]Post, error) {
 			Theme:    theme,
 			Username: username,
 			Likes:    likes,
+			Dislikes: dislikes,
 		}
 		if imagePath.Valid {
 			post.ImagePath = imagePath.String
@@ -295,10 +321,12 @@ func getComments(postID string) ([]Comment, error) {
 		comments.id,
 		COALESCE(users.full_name, users.username, 'Utilisateur'),
 		comments.content,
-		COUNT(comment_like.id) as likes
+		COUNT(DISTINCT comment_like.id) as likes,
+		COUNT(DISTINCT comment_dislike.id) as dislikes
 	FROM comments 
 	LEFT JOIN users ON comments.user_id = users.id
 	LEFT JOIN comment_like ON comments.id = comment_like.comments_id
+	LEFT JOIN comment_dislike ON comments.id = comment_dislike.comments_id
 	WHERE comments.post_id = ?
 	GROUP BY comments.id;
 	`, postID)
@@ -311,8 +339,8 @@ func getComments(postID string) ([]Comment, error) {
 	for rows.Next() {
 		var id int
 		var username, content string
-		var likes int
-		if err := rows.Scan(&id, &username, &content, &likes); err != nil {
+		var likes, dislikes int
+		if err := rows.Scan(&id, &username, &content, &likes, &dislikes); err != nil {
 			return nil, err
 		}
 		comment := Comment{
@@ -320,6 +348,7 @@ func getComments(postID string) ([]Comment, error) {
 			Username: username,
 			Content:  content,
 			Likes:    likes,
+			Dislikes: dislikes,
 		}
 		comments = append(comments, comment)
 	}
@@ -380,6 +409,21 @@ func likepost(postid string, userID string) error {
 	return err
 }
 
+func dislikepost(postid string, userID string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec(
+		"INSERT INTO post_dislike (post_id, user_id) VALUES (?, ?)",
+		postid, userID,
+	)
+
+	return err
+}
+
 func likecomment(commentid string, userID string) error {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -389,6 +433,21 @@ func likecomment(commentid string, userID string) error {
 
 	_, err = db.Exec(
 		"INSERT INTO comment_like (comments_id, user_id) VALUES (?, ?)",
+		commentid, userID,
+	)
+
+	return err
+}
+
+func dislikecomment(commentid string, userID string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec(
+		"INSERT INTO comment_dislike (comments_id, user_id) VALUES (?, ?)",
 		commentid, userID,
 	)
 
@@ -409,6 +468,20 @@ func deletelikecomment(commentid string, userID string) error {
 	return err
 }
 
+func deletedislikecomment(commentid string, userID string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec("DELETE FROM comment_dislike WHERE comments_id = ? AND user_id = ?;",
+		commentid, userID,
+	)
+
+	return err
+}
+
 func deletelikepost(postid string, userID string) error {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -417,6 +490,20 @@ func deletelikepost(postid string, userID string) error {
 	defer db.Close()
 
 	_, err = db.Exec("DELETE FROM post_like WHERE post_id = ? AND user_id = ?;",
+		postid, userID,
+	)
+
+	return err
+}
+
+func deletedislikepost(postid string, userID string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec("DELETE FROM post_dislike WHERE post_id = ? AND user_id = ?;",
 		postid, userID,
 	)
 

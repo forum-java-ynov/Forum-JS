@@ -1,9 +1,11 @@
 package backend
 
 import (
-	"github.com/gorilla/sessions"
+	"encoding/json"
 	"net/http"
 	"os"
+
+	"github.com/gorilla/sessions"
 )
 
 var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
@@ -37,6 +39,12 @@ func isAuthenticated(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := getCurrentUserID(w, r)
 		if err != nil || userID == "" {
+			if r.Header.Get("Accept") == "application/json" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]string{"error": "Not authenticated"})
+				return
+			}
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
