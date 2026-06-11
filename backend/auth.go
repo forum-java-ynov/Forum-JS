@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -263,6 +264,20 @@ func fetchGoogleUserInfo(token *oauth2.Token) (*GoogleUserInfo, error) {
 	return &userInfo, nil
 }
 
+func updateGoogleID(email, googleID string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec(
+		"UPDATE users SET google_id = ? WHERE email = ? AND (google_id IS NULL OR google_id = '');",
+		googleID, email,
+	)
+	return err
+}
+
 // loginOrRegisterGoogleUser creates a new account if the Google user doesn't exist yet.
 func loginOrRegisterGoogleUser(user *GoogleUserInfo) error {
 	exists, err := userExistsByEmail(user.Email)
@@ -274,7 +289,8 @@ func loginOrRegisterGoogleUser(user *GoogleUserInfo) error {
 		return insertGoogleUser(user.Name, user.Email, user.ID)
 	}
 
-	return nil
+	// Met à jour le google_id si pas encore renseigné
+	return updateGoogleID(user.Email, user.ID)
 }
 
 // decodeRequest parses the request body into target, supporting both JSON and form data.
