@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
@@ -55,61 +54,52 @@ func CreateTables() {
 	}
 	defer db.Close()
 
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		full_name TEXT NOT NULL,
-		username TEXT NOT NULL UNIQUE,
-		email TEXT NOT NULL UNIQUE,
-		password TEXT,
-	    google_id TEXT
-	);
-	`)
+	queries := []string{
+		`CREATE TABLE IF NOT EXISTS users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			full_name TEXT NOT NULL,
+			username TEXT NOT NULL UNIQUE,
+			email TEXT NOT NULL UNIQUE,
+			password TEXT,
+			google_id TEXT
+		);`,
+		`CREATE TABLE IF NOT EXISTS posts (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			title TEXT NOT NULL,
+			content TEXT NOT NULL,
+			image_path TEXT,
+			theme TEXT,
+			user_id INTEGER NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
+		`CREATE TABLE IF NOT EXISTS comments (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			post_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			content TEXT NOT NULL,
+			FOREIGN KEY (post_id) REFERENCES posts(id),
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
+		`CREATE TABLE IF NOT EXISTS post_like (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			post_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			FOREIGN KEY (post_id) REFERENCES posts(id),
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
+		`CREATE TABLE IF NOT EXISTS comment_like (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			comments_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			FOREIGN KEY (comments_id) REFERENCES comments(id),
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		);`,
+	}
 
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS posts (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		title TEXT NOT NULL,
-		content TEXT NOT NULL,
-		image_path TEXT,
-		theme TEXT,
-		user_id INTEGER NOT NULL,
-		FOREIGN KEY (user_id) REFERENCES users(id)
-	);
-	`)
-
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS comments (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		post_id INTEGER NOT NULL,
-		user_id INTEGER NOT NULL,
-		content TEXT NOT NULL,
-		FOREIGN KEY (post_id) REFERENCES posts(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
-	);
-	`)
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS post_like (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		post_id INTEGER NOT NULL,
-		user_id INTEGER NOT NULL,
-		FOREIGN KEY (post_id) REFERENCES posts(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
-	);
-	`)
-
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS comment_like (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		comments_id INTEGER NOT NULL,
-		user_id INTEGER NOT NULL,
-		FOREIGN KEY (comments_id) REFERENCES comments(id),
-		FOREIGN KEY (user_id) REFERENCES users(id)
-	);
-	`)
-
-	if err != nil {
-		log.Fatal(err)
+	for _, q := range queries {
+		if _, err := db.Exec(q); err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -174,10 +164,6 @@ func loginUser(username, password string) (bool, error) {
 }
 
 func getUserIDValue(userID string) (interface{}, error) {
-	if id, err := strconv.Atoi(userID); err == nil {
-		return id, nil
-	}
-
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
@@ -185,8 +171,14 @@ func getUserIDValue(userID string) (interface{}, error) {
 	defer db.Close()
 
 	var id int
-	err = db.QueryRow("SELECT id FROM users WHERE username = ? OR email = ?;", userID, userID).Scan(&id)
+	err = db.QueryRow(
+		"SELECT id FROM users WHERE username = ? OR email = ? OR google_id = ?;",
+		userID, userID, userID,
+	).Scan(&id)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("utilisateur introuvable pour l'identifiant %q", userID)
+		}
 		return nil, err
 	}
 
@@ -285,7 +277,7 @@ func addCommente(postID int, userID string, content string) error {
 }
 
 func getComments(postID string) ([]Comment, error) {
-	db, err := sql.Open("sqlite", "database/database.db")
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
 	}
