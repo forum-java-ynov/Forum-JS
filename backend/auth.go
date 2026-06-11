@@ -2,7 +2,9 @@ package backend
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -92,6 +94,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	session, err := getSession(w, r)
 	if err != nil {
+		log.Printf("getSession error: %v", err) // ← ajoute ça temporairement
 		http.Error(w, "Erreur de session", http.StatusInternalServerError)
 		return
 	}
@@ -228,11 +231,12 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Erreur de session", http.StatusInternalServerError)
 		return
 	}
-	session.Values["user_id"] = userInfo.Email
+	session.Values["user_id"] = userInfo.ID
 	session.Values["user_email"] = userInfo.Email
 	session.Values["user_name"] = displayName
 	session.Values["user_picture"] = userInfo.Picture
 	if err := session.Save(r, w); err != nil {
+
 		http.Error(w, "Impossible de sauvegarder la session", http.StatusInternalServerError)
 		return
 	}
@@ -260,6 +264,20 @@ func fetchGoogleUserInfo(token *oauth2.Token) (*GoogleUserInfo, error) {
 	return &userInfo, nil
 }
 
+func updateGoogleID(email, googleID string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec(
+		"UPDATE users SET google_id = ? WHERE email = ? AND (google_id IS NULL OR google_id = '');",
+		googleID, email,
+	)
+	return err
+}
+
 // loginOrRegisterGoogleUser creates a new account if the Google user doesn't exist yet.
 func loginOrRegisterGoogleUser(user *GoogleUserInfo) error {
 	exists, err := userExistsByEmail(user.Email)
@@ -271,7 +289,8 @@ func loginOrRegisterGoogleUser(user *GoogleUserInfo) error {
 		return insertGoogleUser(user.Name, user.Email, user.ID)
 	}
 
-	return nil
+	// Met à jour le google_id si pas encore renseigné
+	return updateGoogleID(user.Email, user.ID)
 }
 
 // decodeRequest parses the request body into target, supporting both JSON and form data.
