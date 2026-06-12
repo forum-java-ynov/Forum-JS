@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accueil</title>
 
-    <link rel="stylesheet" href="/css/Index.css?v=2" />
+    <link rel="stylesheet" href="../css/Index.css" />
 </head>
 
 
@@ -80,8 +80,26 @@
         <section class="section">
             <p class="section-title">Publications</p>
             <p class="section-sub">Les dernières histoires de la communauté</p>
-
+        
         <div id="postContainer">
+            <div class="filter-bar">
+                <h3>Choose a theme</h3>
+                <form action="/" method="GET" style="display:contents;">
+                    <label for="filter-theme-select">theme :</label>
+                    <select id="filter-theme-select" name="theme" style="width:100%; padding:8px; margin-top:8px;">
+                        <option value="">All themes</option>
+                        <option value="tech">Technology</option>
+                        <option value="sport">Sports</option>
+                        <option value="gaming">Gaming</option>
+                        <option value="culture">Culture</option>
+                        <option value="science">Science</option>
+                        <option value="business">Buisness</option>
+                    </select>
+                    <div style="margin-top:10px; display:flex; gap:10px;">
+                        <button id="filter-btn" class="btn-secondary" type="submit">Filter</button>
+                    </div>
+                </form>
+            </div>
             <div id="post" class="post">
                 {{ if .Posts }}
                     {{ range .Posts }}

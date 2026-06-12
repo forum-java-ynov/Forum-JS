@@ -38,6 +38,22 @@ function closeEditPopup() {
     if (popup) popup.style.display = "none";
 }
 
+function filterPosts() {
+    const select = document.getElementById("filter-theme-select");
+    if (!select) return;
+    const theme = select.value;
+    
+    if (theme === "") {
+        window.location.href = "/";
+    } else {
+        window.location.href = "/?theme=" + encodeURIComponent(theme);
+    }
+}
+
+function resetFilter() {
+    window.location.href = "/";
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     const actionForms = document.querySelectorAll('form[action^="/db/toggle_like"], form[action^="/db/toggle_dislike"], form[action^="/db/toggle_comment_like"], form[action^="/db/toggle_comment_dislike"], form[action^="/db/delete_post"]');
 
@@ -65,4 +81,11 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     });
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTheme = urlParams.get('theme');
+    const filterBtn = document.getElementById("filter-btn");
+    if (activeTheme && filterBtn) {
+        filterBtn.textContent = "Reset Filter";
+        filterBtn.onclick = resetFilter;
+    }
 });
