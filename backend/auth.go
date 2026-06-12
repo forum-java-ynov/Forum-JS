@@ -80,7 +80,8 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	ok, err := loginUser(credentials.Username, credentials.Password)
 	if err != nil {
-		http.Error(w, "Login failed due to an internal error", http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 
@@ -91,14 +92,15 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	session, err := getSession(w, r)
 	if err != nil {
-		log.Printf("getSession error: %v", err)
-		http.Error(w, "Erreur de session", http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 	session.Values["user_id"] = credentials.Username
 	session.Values["user_email"] = credentials.Username
 	if sessionSaveErr := session.Save(r, w); sessionSaveErr != nil {
-		http.Error(w, "Erreur de session", http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 
@@ -143,7 +145,8 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	}
 	session.Options.MaxAge = -1
 	if err := session.Save(r, w); err != nil {
-		http.Error(w, "Impossible de supprimer la session", http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
@@ -228,7 +231,8 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	session.Values["user_name"] = displayName
 	session.Values["user_picture"] = userInfo.Picture
 	if err := session.Save(r, w); err != nil {
-		http.Error(w, "Impossible de sauvegarder la session", http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 

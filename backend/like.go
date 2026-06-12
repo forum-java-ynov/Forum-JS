@@ -3,6 +3,7 @@ package backend
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -207,7 +208,8 @@ func ToggleCommentLikeHandler(w http.ResponseWriter, r *http.Request) {
 	err = toggleCommentLike(commentID, userID)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 
@@ -232,7 +234,8 @@ func ToggleCommentDislikeHandler(w http.ResponseWriter, r *http.Request) {
 	err = toggleCommentDislike(commentID, userID)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 
@@ -254,7 +257,8 @@ func ToggleLikeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = toggleLike(postID, userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 	newLikeCount, _ := getPostLikeCount(postID)

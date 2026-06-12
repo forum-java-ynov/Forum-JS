@@ -2,6 +2,7 @@ package backend
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -31,7 +32,8 @@ func createCommente(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := addCommente(postID, userID, content); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 
@@ -47,7 +49,8 @@ func showComments(w http.ResponseWriter, r *http.Request) {
 
 	comments, err := getComments(postID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 
@@ -80,7 +83,8 @@ func editComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := editcomment(commentID, content, userID); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 
