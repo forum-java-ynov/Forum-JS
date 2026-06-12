@@ -953,3 +953,18 @@ nav ul li a:hover {
     padding: 6px 12px;
     font-size: 13px;
 }
+
+/* error page specific */
+.error-hero {
+    min-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.error-hero h1 {
+    font-size: clamp(80px, 15vw, 150px);
+    margin-bottom: 0;
+}
