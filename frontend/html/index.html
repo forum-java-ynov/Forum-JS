@@ -146,7 +146,7 @@
 
                                                         <button type="button" onclick="showEditForm('{{ .ID }}')">Edit</button>
 
-                                                        <form action="/db/delete_post" method="post">
+                                                        <form action="/db/delete_comment" method="post">
                                                             <input type="hidden" name="id" value="{{ .ID }}">
                                                             <button class="btn-delete" type="submit">Delete</button>
                                                         </form>

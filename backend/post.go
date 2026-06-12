@@ -20,6 +20,7 @@ import (
 
 const uploadDir = "uploads"
 const maxImageSize = 800
+
 var allowedTypes = map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true}
 
 func createPost(w http.ResponseWriter, r *http.Request) {
@@ -136,6 +137,91 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+		http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+		return
+	}
+
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		idStr = r.FormValue("id")
+	}
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "ID invalide", http.StatusBadRequest)
+		return
+	}
+
+	username, err := getCurrentUserID(nil, r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	userIDRaw, err := getUserIDValue(username)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	userID, ok := userIDRaw.(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	ownerID, err := getCommentOwnerID(id)
+	if err != nil {
+		http.Error(w, "Commentaire introuvable", http.StatusNotFound)
+		return
+	}
+
+	if ownerID != userID {
+		http.Error(w, "Interdit", http.StatusForbidden)
+		return
+	}
+
+	if err := deleteComment(id); err != nil {
+		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func getCommentOwnerID(commentID int) (int, error) {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return 0, err
+	}
+	defer db.Close()
+
+	var ownerID int
+	err = db.QueryRow("SELECT user_id FROM comments WHERE id = ?;", commentID).Scan(&ownerID)
+	if err != nil {
+		return 0, err
+	}
+	return ownerID, nil
+}
+
+func deleteComment(commentID int) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec("DELETE FROM comments WHERE id = ?;", commentID)
+	return err
 }
 
 func getImagePath(id int) (string, error) {
