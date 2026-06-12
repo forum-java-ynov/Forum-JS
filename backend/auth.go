@@ -37,7 +37,6 @@ type GoogleUserInfo struct {
 
 // -- OAuth config --
 
-// oauthStateToken is used to prevent CSRF attacks.
 const oauthStateToken = "csrf-state-token"
 
 var googleOauthConfig = &oauth2.Config{
@@ -48,8 +47,6 @@ var googleOauthConfig = &oauth2.Config{
 	Endpoint:     google.Endpoint,
 }
 
-// InitOAuth reloads the Google OAuth config from environment variables.
-// Must be called after .env is loaded.
 func InitOAuth() {
 	googleOauthConfig = &oauth2.Config{
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
@@ -94,13 +91,13 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	session, err := getSession(w, r)
 	if err != nil {
-		log.Printf("getSession error: %v", err) // ← ajoute ça temporairement
+		log.Printf("getSession error: %v", err)
 		http.Error(w, "Erreur de session", http.StatusInternalServerError)
 		return
 	}
 	session.Values["user_id"] = credentials.Username
 	session.Values["user_email"] = credentials.Username
-	if err := session.Save(r, w); err != nil {
+	if sessionSaveErr := session.Save(r, w); sessionSaveErr != nil {
 		http.Error(w, "Erreur de session", http.StatusInternalServerError)
 		return
 	}
@@ -152,7 +149,6 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-// handleMe returns the currently logged-in user's info as JSON.
 func handleMe(w http.ResponseWriter, r *http.Request) {
 	session, err := getSession(w, r)
 	if err != nil {
@@ -160,8 +156,8 @@ func handleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, _ := session.Values["user_id"].(string)
-	if id == "" {
+	userID, _ := session.Values["user_id"].(string)
+	if userID == "" {
 		http.Error(w, "Non connecté", http.StatusUnauthorized)
 		return
 	}
@@ -173,31 +169,27 @@ func handleMe(w http.ResponseWriter, r *http.Request) {
 		if email != "" {
 			name = email
 		} else {
-			name = id
+			name = userID
 		}
 	}
 	if email == "" {
-		email = id
+		email = userID
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"id":      id,
+		"id":      userID,
 		"email":   email,
 		"picture": picture,
 		"name":    name,
 	})
 }
 
-// -- Google OAuth handlers --
-
-// handleGoogleLogin redirects the user to Google's consent screen.
 func handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	redirectURL := googleOauthConfig.AuthCodeURL(oauthStateToken)
 	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
 
-// handleGoogleCallback handles the redirect from Google after the user consents.
 func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("state") != oauthStateToken {
 		http.Error(w, "Invalid OAuth state", http.StatusBadRequest)
@@ -236,7 +228,6 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	session.Values["user_name"] = displayName
 	session.Values["user_picture"] = userInfo.Picture
 	if err := session.Save(r, w); err != nil {
-
 		http.Error(w, "Impossible de sauvegarder la session", http.StatusInternalServerError)
 		return
 	}
@@ -244,9 +235,6 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-// -- Helpers --
-
-// fetchGoogleUserInfo calls the Google userinfo endpoint and returns the profile.
 func fetchGoogleUserInfo(token *oauth2.Token) (*GoogleUserInfo, error) {
 	client := googleOauthConfig.Client(context.Background(), token)
 
@@ -278,22 +266,19 @@ func updateGoogleID(email, googleID string) error {
 	return err
 }
 
-// loginOrRegisterGoogleUser creates a new account if the Google user doesn't exist yet.
-func loginOrRegisterGoogleUser(user *GoogleUserInfo) error {
-	exists, err := userExistsByEmail(user.Email)
+func loginOrRegisterGoogleUser(userInfo *GoogleUserInfo) error {
+	exists, err := userExistsByEmail(userInfo.Email)
 	if err != nil {
 		return err
 	}
 
 	if !exists {
-		return insertGoogleUser(user.Name, user.Email, user.ID)
+		return insertGoogleUser(userInfo.Name, userInfo.Email, userInfo.ID)
 	}
 
-	// Met à jour le google_id si pas encore renseigné
-	return updateGoogleID(user.Email, user.ID)
+	return updateGoogleID(userInfo.Email, userInfo.ID)
 }
 
-// decodeRequest parses the request body into target, supporting both JSON and form data.
 func decodeRequest(r *http.Request, target any) error {
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
 		return json.NewDecoder(r.Body).Decode(target)
@@ -318,7 +303,6 @@ func decodeRequest(r *http.Request, target any) error {
 	return nil
 }
 
-// setSessionCookie sets an HttpOnly session cookie with sensible defaults.
 func setSessionCookie(w http.ResponseWriter, name, value string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
@@ -329,7 +313,6 @@ func setSessionCookie(w http.ResponseWriter, name, value string) {
 	})
 }
 
-// cookieValueOrEmpty returns the cookie value, or an empty string if it doesn't exist.
 func cookieValueOrEmpty(r *http.Request, name string) string {
 	c, err := r.Cookie(name)
 	if err != nil {

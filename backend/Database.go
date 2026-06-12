@@ -187,10 +187,11 @@ func getUserIDValue(userID string) (interface{}, error) {
 	defer db.Close()
 
 	var id int
-	err = db.QueryRow(
+	err = db.QueryRow("SELECT id FROM users WHERE username = ? OR email = ? OR google_id = ?;", userID, userID, userID).Scan(&id)
+	/*err = db.QueryRow(
 		"SELECT id FROM users WHERE username = ? OR email = ? OR google_id = ?;",
 		userID, userID, userID,
-	).Scan(&id)
+	).Scan(&id)*/
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("utilisateur introuvable pour l'identifiant %q", userID)
