@@ -44,6 +44,11 @@ type IndexData struct {
 }
 
 func showIndex(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		w.WriteHeader(http.StatusNotFound)
+		http.ServeFile(w, r, "frontend/html/404.html")
+		return
+	}
 	posts, err := getPosts()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -79,6 +84,9 @@ func Server() {
 	})
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "frontend/html/login.html")
+	})
+	http.HandleFunc("/404", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "frontend/html/404.html")
 	})
 	//auth google
 	http.HandleFunc("/auth/logout", handleLogout)
