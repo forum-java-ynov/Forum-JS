@@ -11,6 +11,36 @@ import (
 
 var templates = loadTemplates()
 
+type ErrorData struct {
+	Code    int
+	Message string
+}
+
+var errorMessages = map[int]string{
+	http.StatusBadRequest:          "Requête invalide",
+	http.StatusUnauthorized:        "Vous devez être connecté",
+	http.StatusForbidden:           "Vous n'avez pas la permission",
+	http.StatusNotFound:            "Page introuvable",
+	http.StatusMethodNotAllowed:    "Méthode non autorisée",
+	http.StatusInternalServerError: "Une erreur interne est survenue",
+}
+
+func httpError(w http.ResponseWriter, code int) {
+	msg, ok := errorMessages[code]
+	if !ok {
+		msg = "Une erreur est survenue"
+	}
+	w.WriteHeader(code)
+	if err := templates.ExecuteTemplate(w, "error.html", ErrorData{Code: code, Message: msg}); err != nil {
+		log.Println("httpError template error:", err)
+		fmt.Fprintf(w, "%d - %s", code, msg)
+	}
+}
+
+func serverError(w http.ResponseWriter) {
+	httpError(w, http.StatusInternalServerError)
+}
+
 func loadTemplates() *template.Template {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
@@ -46,14 +76,16 @@ type IndexData struct {
 func showIndex(w http.ResponseWriter, r *http.Request) {
 	posts, err := getPosts()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 
 	for i := range posts {
 		comments, err := getComments(fmt.Sprint(posts[i].ID))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Println(err)
+			serverError(w)
 			return
 		}
 		posts[i].Comments = comments
@@ -61,7 +93,8 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 
 	data := IndexData{Posts: posts}
 	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 	}
 }
 
@@ -71,26 +104,33 @@ func Server() {
 	http.Handle("/frontend/", http.StripPrefix("/frontend/", http.FileServer(http.Dir("frontend"))))
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
 
-	//routes
 	http.HandleFunc("/", showIndex)
-
+	http.HandleFunc("/db/posts", showPosts)
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "frontend/html/register.html")
 	})
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "frontend/html/login.html")
 	})
-	//auth google
+
 	http.HandleFunc("/auth/logout", handleLogout)
 	http.HandleFunc("/api/me", isAuthenticated(handleMe))
 	http.HandleFunc("/auth/google/login", handleGoogleLogin)
 	http.HandleFunc("/auth/google/callback", handleGoogleCallback)
 
-	//appel db
+	http.HandleFunc("/test500", func(w http.ResponseWriter, r *http.Request) {
+		serverError(w)
+	})
+	http.HandleFunc("/test403", func(w http.ResponseWriter, r *http.Request) {
+		httpError(w, http.StatusForbidden)
+	})
+	http.HandleFunc("/test401", func(w http.ResponseWriter, r *http.Request) {
+		httpError(w, http.StatusUnauthorized)
+	})
+
 	http.HandleFunc("/db/register", register)
 	http.HandleFunc("/db/login", login)
 	http.HandleFunc("/db/create_post", isAuthenticated(createPost))
-	http.HandleFunc("/db/posts", showPosts)
 	http.HandleFunc("/db/delete_post", isAuthenticated(deletePostHandler))
 	http.HandleFunc("/db/delete_comment", isAuthenticated(deleteCommentHandler))
 	http.HandleFunc("/db/create_commente", isAuthenticated(createCommente))

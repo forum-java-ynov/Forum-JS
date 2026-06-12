@@ -8,6 +8,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -51,7 +52,8 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := os.MkdirAll(uploadDir, 0755); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Println(err)
+			serverError(w)
 			return
 		}
 
@@ -67,7 +69,8 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 		dstPath := filepath.Join(uploadDir, imagePath)
 		dst, createErr := os.Create(dstPath)
 		if createErr != nil {
-			http.Error(w, createErr.Error(), http.StatusInternalServerError)
+			log.Println(err)
+			serverError(w)
 			return
 		}
 		defer dst.Close()
@@ -96,7 +99,8 @@ func showPosts(w http.ResponseWriter, r *http.Request) {
 	posts, err := getPosts()
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 
@@ -135,7 +139,8 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 
 	db, dbErr := sql.Open("sqlite", dbPath)
 	if dbErr != nil {
-		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 	defer db.Close()
@@ -233,7 +238,8 @@ func deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := deleteComment(id); err != nil {
-		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 
