@@ -11,6 +11,36 @@ import (
 
 var templates = loadTemplates()
 
+type ErrorData struct {
+	Code    int
+	Message string
+}
+
+var errorMessages = map[int]string{
+	http.StatusBadRequest:          "Requête invalide",
+	http.StatusUnauthorized:        "Vous devez être connecté",
+	http.StatusForbidden:           "Vous n'avez pas la permission",
+	http.StatusNotFound:            "Page introuvable",
+	http.StatusMethodNotAllowed:    "Méthode non autorisée",
+	http.StatusInternalServerError: "Une erreur interne est survenue",
+}
+
+func httpError(w http.ResponseWriter, code int) {
+	msg, ok := errorMessages[code]
+	if !ok {
+		msg = "Une erreur est survenue"
+	}
+	w.WriteHeader(code)
+	if err := templates.ExecuteTemplate(w, "error.html", ErrorData{Code: code, Message: msg}); err != nil {
+		log.Println("httpError template error:", err)
+		fmt.Fprintf(w, "%d - %s", code, msg)
+	}
+}
+
+func serverError(w http.ResponseWriter) {
+	httpError(w, http.StatusInternalServerError)
+}
+
 func loadTemplates() *template.Template {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
@@ -50,23 +80,25 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	posts, err := getPosts()
-	// Vérifier si un filtre est présent dans l'URL
+
 	themeFilter := r.URL.Query().Get("theme")
 	if themeFilter != "" {
 		posts, err = filterPostsByTheme(themeFilter)
 	} else {
 		posts, err = getPosts()
 	}
-	
+
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 		return
 	}
 
 	for i := range posts {
 		comments, err := getComments(fmt.Sprint(posts[i].ID))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			log.Println(err)
+			serverError(w)
 			return
 		}
 		posts[i].Comments = comments
@@ -74,7 +106,8 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 
 	data := IndexData{Posts: posts}
 	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		serverError(w)
 	}
 }
 
@@ -84,9 +117,7 @@ func Server() {
 	http.Handle("/frontend/", http.StripPrefix("/frontend/", http.FileServer(http.Dir("frontend"))))
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadDir))))
 
-	//routes
 	http.HandleFunc("/", showIndex)
-
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "frontend/html/register.html")
 	})
@@ -102,7 +133,16 @@ func Server() {
 	http.HandleFunc("/auth/google/login", handleGoogleLogin)
 	http.HandleFunc("/auth/google/callback", handleGoogleCallback)
 
-	//appel db
+	http.HandleFunc("/test500", func(w http.ResponseWriter, r *http.Request) {
+		serverError(w)
+	})
+	http.HandleFunc("/test403", func(w http.ResponseWriter, r *http.Request) {
+		httpError(w, http.StatusForbidden)
+	})
+	http.HandleFunc("/test401", func(w http.ResponseWriter, r *http.Request) {
+		httpError(w, http.StatusUnauthorized)
+	})
+
 	http.HandleFunc("/db/register", register)
 	http.HandleFunc("/db/login", login)
 	http.HandleFunc("/db/create_post", isAuthenticated(createPost))
@@ -116,7 +156,6 @@ func Server() {
 	http.HandleFunc("/db/toggle_dislike", isAuthenticated(ToggleDislikeHandler))
 	http.HandleFunc("/db/toggle_comment_like", isAuthenticated(ToggleCommentLikeHandler))
 	http.HandleFunc("/db/toggle_comment_dislike", isAuthenticated(ToggleCommentDislikeHandler))
-	http.HandleFunc("/db/filter_posts", filterPostsHandler)
 
 	fmt.Println("http://localhost:8082")
 	http.ListenAndServe(":8082", nil)
