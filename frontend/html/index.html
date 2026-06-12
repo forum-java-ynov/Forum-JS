@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="EN">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accueil</title>
-    <link rel="stylesheet" href="/css/Index.css?v=2" />
+    <link rel="stylesheet" href="/css/Index.css?v=4" />
 </head>
 
 <body>
@@ -17,20 +17,18 @@
                 <span id="nav-name"></span>
             </li>
             <li id="nav-logout" style="display:none;">
-                <a href="/auth/logout">Déconnexion</a>
+                <a href="/auth/logout">logout</a>
             </li>
         </ul>
     </nav>
 
     <main>
         <section class="hero">
-            <p class="hero-eyebrow">Bienvenue</p>
+            <p class="hero-eyebrow">Welcome</p>
             <h1>Forum JS</h1>
             <div class="hero-actions">
                 <button class="btn-secondary" type="button" onclick="showPostCreationForm()">Create a Post</button>
             </div>
-
-            <!-- POPUP Create Post -->
             <div class="posts" id="posts">
                 <div class="popup-content">
                     <h2>Create a Post</h2>
@@ -59,17 +57,16 @@
 
                         <button type="submit">Publish</button>
                     </form>
-                    <button type="button" onclick="closePopup()">exit</button>
+                    <button class="btn-secondary" type="button" onclick="closePopup()">Exit</button>
                 </div>
             </div>
         </section>
 
         <section class="section">
             <p class="section-title">Publications</p>
-            <p class="section-sub">Les dernières histoires de la communauté</p>
+            <p class="section-sub">The latest stories from the community</p>
 
             <div id="postContainer">
-                <!-- FILTER BAR -->
                 <div class="filter-bar">
                     <h3>Choose a theme</h3>
                     <form action="/" method="GET" style="display:contents;">
@@ -89,7 +86,6 @@
                     </form>
                 </div>
 
-                <!-- POSTS LIST -->
                 <div id="post" class="post">
                     {{ if .Posts }}
                         {{ range .Posts }}
@@ -146,25 +142,22 @@
                             </article>
                         {{ end }}
                     {{ else }}
-                        <p class="empty-posts">Aucun post pour le moment.</p>
+                        <p class="empty-posts">No posts available at the moment.</p>
                     {{ end }}
                 </div>
-
-                <!-- POPUP Create Comment -->
                 <div class="create-commente-pop" id="create-commente-pop">
                     <div id="commente-pop-up">
-                        <h2>Create a Commente</h2>
+                        <h2>Create a Comment</h2>
                         <form id="commenteForm" action="/db/create_commente" method="post">
                             <input type="hidden" id="post-id-commente" name="post_id">
                             <label for="content-commente">Content:</label><br>
                             <textarea id="content-commente" name="content" rows="4" cols="50"></textarea><br><br>
                             <button type="submit">Publish</button>
                         </form>
-                        <button type="button" onclick="closeCommentePopup()">exit</button>
+                        <button class="btn-secondary" type="button" onclick="closeCommentePopup()">exit</button>
                     </div>
                 </div>
 
-                <!-- POPUP Edit Comment -->
                 <div class="create-commente-pop" id="edit-comment-pop">
                     <div id="edit-commente-pop-up" class="popup-content">
                         <h2 id="edit-commente-popup-title">Edit a Comment</h2>
@@ -174,7 +167,7 @@
                             <textarea id="edit-content-commente" name="content" rows="4" cols="50"></textarea><br><br>
                             <button type="submit" id="edit-commente-submit-btn">Update</button>
                         </form>
-                        <button type="button" onclick="closeEditPopup()">exit</button>
+                        <button class="btn-secondary" type="button" onclick="closeEditPopup()">Exit</button>
                     </div>
                 </div>
             </div>
