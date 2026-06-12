@@ -52,10 +52,6 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 	posts, err := getPosts()
 	// Vérifier si un filtre est présent dans l'URL
 	themeFilter := r.URL.Query().Get("theme")
-	
-	var posts []Post
-	var err error
-
 	if themeFilter != "" {
 		posts, err = filterPostsByTheme(themeFilter)
 	} else {
