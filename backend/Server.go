@@ -50,6 +50,18 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	posts, err := getPosts()
+	// Vérifier si un filtre est présent dans l'URL
+	themeFilter := r.URL.Query().Get("theme")
+	
+	var posts []Post
+	var err error
+
+	if themeFilter != "" {
+		posts, err = filterPostsByTheme(themeFilter)
+	} else {
+		posts, err = getPosts()
+	}
+	
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -108,6 +120,7 @@ func Server() {
 	http.HandleFunc("/db/toggle_dislike", isAuthenticated(ToggleDislikeHandler))
 	http.HandleFunc("/db/toggle_comment_like", isAuthenticated(ToggleCommentLikeHandler))
 	http.HandleFunc("/db/toggle_comment_dislike", isAuthenticated(ToggleCommentDislikeHandler))
+	http.HandleFunc("/db/filter_posts", filterPostsHandler)
 
 	fmt.Println("http://localhost:8082")
 	http.ListenAndServe(":8082", nil)
