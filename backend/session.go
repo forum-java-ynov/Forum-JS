@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gorilla/sessions"
 )
@@ -31,8 +32,15 @@ func getCurrentUserID(w http.ResponseWriter, r *http.Request) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	userID, _ := session.Values["user_id"].(string)
-	return userID, nil
+
+	switch v := session.Values["user_id"].(type) {
+	case int:
+		return strconv.Itoa(v), nil
+	case string:
+		return v, nil
+	default:
+		return "", nil
+	}
 }
 
 func isAuthenticated(next http.HandlerFunc) http.HandlerFunc {

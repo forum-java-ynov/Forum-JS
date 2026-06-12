@@ -109,6 +109,18 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sessionUserID, err := getCurrentUserID(nil, r)
+	if err != nil || sessionUserID == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	requestingUserNumericID, err := getUserIDValue(sessionUserID)
+	if err != nil {
+		http.Error(w, "Utilisateur introuvable", http.StatusUnauthorized)
+		return
+	}
+
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
 		idStr = r.FormValue("id")
@@ -120,22 +132,57 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	db, dbErr := sql.Open("sqlite", dbPath)
+	if dbErr != nil {
+		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	var ownerID int
+	if queryErr := db.QueryRow("SELECT user_id FROM posts WHERE id = ?;", id).Scan(&ownerID); queryErr != nil {
+		http.Error(w, "Post introuvable", http.StatusNotFound)
+		return
+	}
+
+	if ownerID != requestingUserNumericID.(int) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	imagePath, imgErr := getImagePath(id)
 	if imgErr == nil && imagePath != "" {
 		os.Remove(filepath.Join(uploadDir, imagePath))
 	}
 
-	if err := deletePost(id); err != nil {
+	if _, err := db.Exec("DELETE FROM comment_like WHERE comments_id IN (SELECT id FROM comments WHERE post_id = ?);", id); err != nil {
+		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
+		return
+	}
+	if _, err := db.Exec("DELETE FROM comment_dislike WHERE comments_id IN (SELECT id FROM comments WHERE post_id = ?);", id); err != nil {
+		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
+		return
+	}
+	if _, err := db.Exec("DELETE FROM comments WHERE post_id = ?;", id); err != nil {
+		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
+		return
+	}
+	if _, err := db.Exec("DELETE FROM post_like WHERE post_id = ?;", id); err != nil {
+		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
+		return
+	}
+	if _, err := db.Exec("DELETE FROM post_dislike WHERE post_id = ?;", id); err != nil {
+		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
+		return
+	}
+	if _, err := db.Exec("DELETE FROM posts WHERE id = ?;", id); err != nil {
 		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
 		return
 	}
 
-	if r.Method == http.MethodPost {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
-
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
 }
 
 func getImagePath(id int) (string, error) {
