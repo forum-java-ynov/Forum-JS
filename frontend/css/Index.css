@@ -720,3 +720,103 @@ button, .btn, input[type="submit"], input[type="button"] {
         font-size: 22px;
     }
 }
+
+.comments {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 28px;
+    padding-top: 22px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.comment {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+        "author  action"
+        "content action"
+        "reactions action";
+    align-items: start;
+    column-gap: 14px;
+    row-gap: 4px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.comment:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+.comment strong {
+    grid-area: author;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.comment p {
+    grid-area: content;
+    font-size: 14px;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.72);
+    margin: 2px 0 6px;
+}
+
+.comment .comment-reactions {
+    grid-area: reactions;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 0;
+}
+
+.comment form {
+    grid-area: action;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.comment button {
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.55);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.comment button:hover {
+    background: rgba(255, 255, 255, 0.10);
+    color: #fff;
+    transform: none;
+}
+
+.comment .reaction-pill {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+/* error page specific */
+.error-hero {
+    min-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.error-hero h1 {
+    font-size: clamp(80px, 15vw, 150px);
+    margin-bottom: 0;
+}

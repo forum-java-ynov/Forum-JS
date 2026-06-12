@@ -17,12 +17,12 @@ type ErrorData struct {
 }
 
 var errorMessages = map[int]string{
-	http.StatusBadRequest:          "Requête invalide",
-	http.StatusUnauthorized:        "Vous devez être connecté",
-	http.StatusForbidden:           "Vous n'avez pas la permission",
-	http.StatusNotFound:            "Page introuvable",
-	http.StatusMethodNotAllowed:    "Méthode non autorisée",
-	http.StatusInternalServerError: "Une erreur interne est survenue",
+	http.StatusBadRequest:          "Invalid Request",
+	http.StatusUnauthorized:        "You need to be logged in",
+	http.StatusForbidden:           "Permission needed",
+	http.StatusNotFound:            "Page not Found",
+	http.StatusMethodNotAllowed:    "unauthorized method",
+	http.StatusInternalServerError: "Internal error Occured",
 }
 
 func httpError(w http.ResponseWriter, code int) {
@@ -44,7 +44,7 @@ func serverError(w http.ResponseWriter) {
 func loadTemplates() *template.Template {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
-		log.Fatalf("Impossible de récupérer le chemin du fichier source")
+		log.Fatalf("Can't resolve source code path")
 	}
 	baseDir := filepath.Dir(file)
 

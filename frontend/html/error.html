@@ -4,13 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Erreur {{.Code}}</title>
-    <link rel="stylesheet" href="/css/Error.css">
+    <link rel="stylesheet" href="/css/Index.css?v=2">
 </head>
 <body>
-<div class="container">
-    <div class="code">{{.Code}}</div>
-    <div class="message">{{.Message}}</div>
-    <a href="/">Retour à l'accueil</a>
-</div>
+    <nav>
+        <ul>
+            <li id="nav-login"><a href="/login">Login</a></li>
+            <li id="nav-register"><a href="/register">Register</a></li>
+            <li id="nav-user" class="nav-user" style="display:none;">
+                <span id="nav-name"></span>
+            </li>
+            <li id="nav-logout" style="display:none;">
+                <a href="/auth/logout">Log out</a>
+            </li>
+        </ul>
+    </nav>
+
+    <main>
+        <section class="hero error-hero">
+            <h1>{{.Code}}</h1>
+            <p class="hero-sub">{{.Message}}</p>
+            <div class="hero-actions">
+                <a href="/" class="btn-secondary">Back to Home Page</a>
+            </div>
+        </section>
+    </main>
+
+    <script src="/js/oauth.js"></script>
+    <script src="/js/post.js"></script>
 </body>
 </html>
