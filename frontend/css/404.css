@@ -98,7 +98,7 @@ nav ul li a:hover {
     pointer-events: none;
 }
 
-.hero h1 {
+.hero h4 {
     font-size: clamp(48px, 8vw, 88px);
     font-weight: 700;
     line-height: 1.02;
