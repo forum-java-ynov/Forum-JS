@@ -31,7 +31,7 @@ func createCommente(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := addCommente(postID, userID, content); err != nil {
+	if err := addComment(postID, userID, content); err != nil {
 		log.Println(err)
 		serverError(w)
 		return
@@ -82,7 +82,8 @@ func editComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := editcomment(commentID, content, userID); err != nil {
+	// Conversion de l'int en string pour matcher la signature attendue par editcomment
+	if err := editcomment(commentID, content, strconv.Itoa(userID)); err != nil {
 		log.Println(err)
 		serverError(w)
 		return

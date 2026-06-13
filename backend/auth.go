@@ -2,11 +2,12 @@ package backend
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -30,6 +31,13 @@ type RegisterData struct {
 	ConfirmPassword string `json:"confirm_password"`
 }
 
+type User struct {
+	ID       int
+	FullName string
+	Username string
+	Email    string
+}
+
 type GoogleUserInfo struct {
 	ID      string `json:"id"`
 	Email   string `json:"email"`
@@ -37,13 +45,7 @@ type GoogleUserInfo struct {
 	Picture string `json:"picture"`
 }
 
-// -- OAuth config --
-
-func generateStateToken() string {
-	b := make([]byte, 16)
-	rand.Read(b)
-	return base64.URLEncoding.EncodeToString(b)
-}
+// -- OAuth --
 
 var googleOauthConfig = &oauth2.Config{
 	ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
@@ -53,14 +55,70 @@ var googleOauthConfig = &oauth2.Config{
 	Endpoint:     google.Endpoint,
 }
 
-func InitOAuth() {
-	googleOauthConfig = &oauth2.Config{
-		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
-		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-		RedirectURL:  os.Getenv("GOOGLE_REDIRECT_URL"),
-		Scopes:       []string{"openid", "email", "profile"},
-		Endpoint:     google.Endpoint,
+// generateStateToken returns a cryptographically random base64 string
+// used as a per-request CSRF token for the OAuth flow.
+func generateStateToken() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
 	}
+	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+// -- DB helpers --
+
+// getUserByUsername fetches a user's full record from the DB by their username.
+func getUserByUsername(username string) (User, error) {
+	conn, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return User{}, err
+	}
+	defer conn.Close()
+
+	var user User
+	err = conn.QueryRow(
+		"SELECT id, full_name, username, email FROM users WHERE username = ?",
+		username,
+	).Scan(&user.ID, &user.FullName, &user.Username, &user.Email)
+	if err != nil {
+		return User{}, err
+	}
+	return user, nil
+}
+
+// getUserByEmail fetches a user's full record from the DB by their email.
+// Used after Google OAuth to resolve the canonical DB user.
+func getUserByEmail(email string) (User, error) {
+	conn, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return User{}, err
+	}
+	defer conn.Close()
+
+	var user User
+	err = conn.QueryRow(
+		"SELECT id, full_name, username, email FROM users WHERE email = ?",
+		email,
+	).Scan(&user.ID, &user.FullName, &user.Username, &user.Email)
+	if err != nil {
+		return User{}, err
+	}
+	return user, nil
+}
+
+// sessionDisplayName resolves the best available display name from session values,
+// falling back from name → email → user ID.
+func sessionDisplayName(values map[interface{}]interface{}) string {
+	if name, _ := values["user_name"].(string); name != "" {
+		return name
+	}
+	if email, _ := values["user_email"].(string); email != "" {
+		return email
+	}
+	if id, _ := values["user_id"].(int); id != 0 {
+		return fmt.Sprintf("%d", id)
+	}
+	return "Unknown"
 }
 
 // -- Auth handlers --
@@ -90,9 +148,15 @@ func login(w http.ResponseWriter, r *http.Request) {
 		serverError(w)
 		return
 	}
-
 	if !ok {
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := getUserByUsername(credentials.Username)
+	if err != nil {
+		log.Println(err)
+		serverError(w)
 		return
 	}
 
@@ -102,9 +166,10 @@ func login(w http.ResponseWriter, r *http.Request) {
 		serverError(w)
 		return
 	}
-	session.Values["user_id"] = credentials.Username
-	session.Values["user_email"] = credentials.Username
-	if sessionSaveErr := session.Save(r, w); sessionSaveErr != nil {
+	session.Values["user_id"] = user.ID
+	session.Values["user_email"] = user.Email
+	session.Values["user_name"] = user.FullName
+	if err := session.Save(r, w); err != nil {
 		log.Println(err)
 		serverError(w)
 		return
@@ -146,7 +211,8 @@ func register(w http.ResponseWriter, r *http.Request) {
 func handleLogout(w http.ResponseWriter, r *http.Request) {
 	session, err := getSession(w, r)
 	if err != nil {
-		http.Error(w, "Erreur de session", http.StatusInternalServerError)
+		log.Println(err)
+		http.Error(w, "Session error", http.StatusInternalServerError)
 		return
 	}
 	session.Options.MaxAge = -1
@@ -161,33 +227,24 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 func handleMe(w http.ResponseWriter, r *http.Request) {
 	session, err := getSession(w, r)
 	if err != nil {
-		http.Error(w, "Erreur de session", http.StatusInternalServerError)
+		log.Println(err)
+		http.Error(w, "Session error", http.StatusInternalServerError)
 		return
 	}
 
-	userID, _ := session.Values["user_id"].(string)
-	if userID == "" {
-		http.Error(w, "Non connecté", http.StatusUnauthorized)
+	userID, ok := session.Values["user_id"].(int)
+	if !ok || userID == 0 {
+		http.Error(w, "Not authenticated", http.StatusUnauthorized)
 		return
 	}
 
 	email, _ := session.Values["user_email"].(string)
 	picture, _ := session.Values["user_picture"].(string)
-	name, _ := session.Values["user_name"].(string)
-	if name == "" {
-		if email != "" {
-			name = email
-		} else {
-			name = userID
-		}
-	}
-	if email == "" {
-		email = userID
-	}
+	name := sessionDisplayName(session.Values)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"id":      userID,
+		"id":      fmt.Sprintf("%d", userID),
 		"email":   email,
 		"picture": picture,
 		"name":    name,
@@ -195,30 +252,68 @@ func handleMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
-	redirectURL := googleOauthConfig.AuthCodeURL(oauthStateToken)
-	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+	state, err := generateStateToken()
+	if err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
+	session, err := getSession(w, r)
+	if err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+	session.Values["oauth_state"] = state
+	if err := session.Save(r, w); err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
+	http.Redirect(w, r, googleOauthConfig.AuthCodeURL(state), http.StatusTemporaryRedirect)
 }
 
 func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	if r.FormValue("state") != oauthStateToken {
+	session, err := getSession(w, r)
+	if err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
+	expectedState, _ := session.Values["oauth_state"].(string)
+	if expectedState == "" || r.FormValue("state") != expectedState {
 		http.Error(w, "Invalid OAuth state", http.StatusBadRequest)
 		return
 	}
 
 	token, err := googleOauthConfig.Exchange(context.Background(), r.FormValue("code"))
 	if err != nil {
-		http.Error(w, "Failed to exchange authorization code: "+err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		http.Error(w, "Failed to exchange authorization code", http.StatusInternalServerError)
 		return
 	}
 
 	userInfo, err := fetchGoogleUserInfo(token)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Failed to fetch Google profile", http.StatusInternalServerError)
 		return
 	}
 
 	if err := loginOrRegisterGoogleUser(userInfo); err != nil {
-		http.Error(w, "Google login failed: "+err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		http.Error(w, "Google login failed", http.StatusInternalServerError)
+		return
+	}
+
+	// Fetch the canonical DB record so user_id is always an int, consistent with regular login.
+	user, err := getUserByEmail(userInfo.Email)
+	if err != nil {
+		log.Println(err)
+		serverError(w)
 		return
 	}
 
@@ -227,13 +322,9 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		displayName = userInfo.Email
 	}
 
-	session, err := getSession(w, r)
-	if err != nil {
-		http.Error(w, "Erreur de session", http.StatusInternalServerError)
-		return
-	}
-	session.Values["user_id"] = userInfo.ID
-	session.Values["user_email"] = userInfo.Email
+	delete(session.Values, "oauth_state")
+	session.Values["user_id"] = user.ID
+	session.Values["user_email"] = user.Email
 	session.Values["user_name"] = displayName
 	session.Values["user_picture"] = userInfo.Picture
 	if err := session.Save(r, w); err != nil {
@@ -263,13 +354,13 @@ func fetchGoogleUserInfo(token *oauth2.Token) (*GoogleUserInfo, error) {
 }
 
 func updateGoogleID(email, googleID string) error {
-	db, err := sql.Open("sqlite", dbPath)
+	conn, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer conn.Close()
 
-	_, err = db.Exec(
+	_, err = conn.Exec(
 		"UPDATE users SET google_id = ? WHERE email = ? AND (google_id IS NULL OR google_id = '');",
 		googleID, email,
 	)
@@ -311,22 +402,4 @@ func decodeRequest(r *http.Request, target any) error {
 	}
 
 	return nil
-}
-
-func setSessionCookie(w http.ResponseWriter, name, value string) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     name,
-		Value:    value,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
-}
-
-func cookieValueOrEmpty(r *http.Request, name string) string {
-	c, err := r.Cookie(name)
-	if err != nil {
-		return ""
-	}
-	return c.Value
 }

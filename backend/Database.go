@@ -140,7 +140,10 @@ func insertUser(fullName, username, email, password, verifPassword string) error
 	}
 	defer db.Close()
 
-	hpassword, _ := HashPassword(password)
+	hpassword, err := HashPassword(password)
+	if err != nil {
+		return err
+	}
 
 	_, err = db.Exec(`
     INSERT INTO users (full_name, username, email, password) 
@@ -179,48 +182,37 @@ func loginUser(username, password string) (bool, error) {
 	return CheckPasswordHash(password, storedPassword), nil
 }
 
-func getUserIDValue(userID string) (interface{}, error) {
+func getUserIDValue(userID string) (int, error) {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	defer db.Close()
 
 	var id int
 	err = db.QueryRow("SELECT id FROM users WHERE username = ? OR email = ? OR google_id = ?;", userID, userID, userID).Scan(&id)
-	/*err = db.QueryRow(
-		"SELECT id FROM users WHERE username = ? OR email = ? OR google_id = ?;",
-		userID, userID, userID,
-	).Scan(&id)*/
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("utilisateur introuvable pour l'identifiant %q", userID)
+			return 0, fmt.Errorf("utilisateur introuvable pour l'identifiant %q", userID)
 		}
-		return nil, err
+		return 0, err
 	}
 
 	return id, nil
 }
 
-func addPost(title, content, imagePath, theme, userID string) {
-	db, err := sql.Open("sqlite", dbPath)
+func addPost(title, content, imagePath, theme string, userID int) error {
+	conn, err := sql.Open("sqlite", dbPath)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	defer db.Close()
+	defer conn.Close()
 
-	uid, err := getUserIDValue(userID)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = db.Exec(`
-	INSERT INTO posts (title, content, image_path, theme, user_id) 
-	VALUES (?, ?, ?, ?, ?);
-	`, title, content, imagePath, theme, uid)
-	if err != nil {
-		log.Fatal(err)
-	}
+	_, err = conn.Exec(`
+        INSERT INTO posts (title, content, image_path, theme, user_id) 
+        VALUES (?, ?, ?, ?, ?);
+    `, title, content, imagePath, theme, userID)
+	return err
 }
 
 func getPosts() ([]Post, error) {
@@ -276,25 +268,20 @@ func getPosts() ([]Post, error) {
 	return posts, nil
 }
 
-func addCommente(postID int, userID string, content string) error {
+func addComment(postID int, userID int, content string) error {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	uid, err := getUserIDValue(userID)
-	if err != nil {
-		return err
-	}
-
 	_, err = db.Exec(`
-	INSERT INTO comments (post_id, user_id, content) 
-	VALUES (?, ?, ?);
-	`, postID, uid, content)
+		INSERT INTO comments (post_id, user_id, content)
+		VALUES (?, ?, ?);
+	`, postID, userID, content)
+
 	return err
 }
-
 func getComments(postID string) ([]Comment, error) {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -302,20 +289,22 @@ func getComments(postID string) ([]Comment, error) {
 	}
 	defer db.Close()
 
-	rows, err := db.Query(`
-	SELECT 
-		comments.id,
-		COALESCE(users.full_name, users.username, 'Utilisateur'),
-		comments.content,
-		COUNT(DISTINCT comment_like.id) as likes,
-		COUNT(DISTINCT comment_dislike.id) as dislikes
-	FROM comments 
-	LEFT JOIN users ON comments.user_id = users.id
-	LEFT JOIN comment_like ON comments.id = comment_like.comments_id
-	LEFT JOIN comment_dislike ON comments.id = comment_dislike.comments_id
-	WHERE comments.post_id = ?
-	GROUP BY comments.id;
-	`, postID)
+	query := `
+		SELECT 
+			comments.id, 
+			COALESCE(users.username, 'Anonyme') as username, 
+			comments.content,
+			COUNT(DISTINCT comment_like.id) as likes,
+			COUNT(DISTINCT comment_dislike.id) as dislikes
+		FROM comments
+		LEFT JOIN users ON comments.user_id = users.id
+		LEFT JOIN comment_like ON comments.id = comment_like.comments_id
+		LEFT JOIN comment_dislike ON comments.id = comment_dislike.comments_id
+		WHERE comments.post_id = ?
+		GROUP BY comments.id;
+	`
+
+	rows, err := db.Query(query, postID)
 	if err != nil {
 		return nil, err
 	}
@@ -323,18 +312,11 @@ func getComments(postID string) ([]Comment, error) {
 
 	var comments []Comment
 	for rows.Next() {
-		var id, likes, dislikes int
-		var username, content string
-		if err := rows.Scan(&id, &username, &content, &likes, &dislikes); err != nil {
+		var c Comment
+		if err := rows.Scan(&c.ID, &c.Username, &c.Content, &c.Likes, &c.Dislikes); err != nil {
 			return nil, err
 		}
-		comments = append(comments, Comment{
-			ID:       id,
-			Username: username,
-			Content:  content,
-			Likes:    likes,
-			Dislikes: dislikes,
-		})
+		comments = append(comments, c)
 	}
 	return comments, nil
 }

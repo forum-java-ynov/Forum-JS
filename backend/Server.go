@@ -79,7 +79,9 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "frontend/html/404.html")
 		return
 	}
-	posts, err := getPosts()
+
+	var posts []Post
+	var err error
 
 	themeFilter := r.URL.Query().Get("theme")
 	if themeFilter != "" {
@@ -89,7 +91,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		log.Println(err)
+		log.Println("Erreur lors de la récupération des posts:", err)
 		serverError(w)
 		return
 	}
@@ -97,7 +99,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 	for i := range posts {
 		comments, err := getComments(fmt.Sprint(posts[i].ID))
 		if err != nil {
-			log.Println(err)
+			log.Println("Erreur lors de la récupération des commentaires:", err)
 			serverError(w)
 			return
 		}
@@ -106,8 +108,8 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 
 	data := IndexData{Posts: posts}
 	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
-		log.Println(err)
-		serverError(w)
+		log.Println("Erreur template:", err)
+		return
 	}
 }
 

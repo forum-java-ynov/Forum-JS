@@ -1,9 +1,9 @@
 package backend
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
-	"database/sql"
 )
 
 func filterPostsHandler(w http.ResponseWriter, r *http.Request) {

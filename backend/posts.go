@@ -35,7 +35,7 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 	imagePath := ""
 	theme := r.FormValue("theme")
 
-	userID, err := getCurrentUserID(nil, r)
+	userID, err := getCurrentUserID(w, r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -114,15 +114,9 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionUserID, err := getCurrentUserID(nil, r)
-	if err != nil || sessionUserID == "" {
+	sessionUserID, err := getCurrentUserID(w, r)
+	if err != nil || sessionUserID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	requestingUserNumericID, err := getUserIDValue(sessionUserID)
-	if err != nil {
-		http.Error(w, "Utilisateur introuvable", http.StatusUnauthorized)
 		return
 	}
 
@@ -139,7 +133,7 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 
 	db, dbErr := sql.Open("sqlite", dbPath)
 	if dbErr != nil {
-		log.Println(err)
+		log.Println(dbErr)
 		serverError(w)
 		return
 	}
@@ -151,7 +145,7 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ownerID != requestingUserNumericID.(int) {
+	if ownerID != sessionUserID {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -161,30 +155,12 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 		os.Remove(filepath.Join(uploadDir, imagePath))
 	}
 
-	if _, err := db.Exec("DELETE FROM comment_like WHERE comments_id IN (SELECT id FROM comments WHERE post_id = ?);", id); err != nil {
-		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
-		return
-	}
-	if _, err := db.Exec("DELETE FROM comment_dislike WHERE comments_id IN (SELECT id FROM comments WHERE post_id = ?);", id); err != nil {
-		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
-		return
-	}
-	if _, err := db.Exec("DELETE FROM comments WHERE post_id = ?;", id); err != nil {
-		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
-		return
-	}
-	if _, err := db.Exec("DELETE FROM post_like WHERE post_id = ?;", id); err != nil {
-		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
-		return
-	}
-	if _, err := db.Exec("DELETE FROM post_dislike WHERE post_id = ?;", id); err != nil {
-		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
-		return
-	}
-	if _, err := db.Exec("DELETE FROM posts WHERE id = ?;", id); err != nil {
-		http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
-		return
-	}
+	db.Exec("DELETE FROM comment_like WHERE comments_id IN (SELECT id FROM comments WHERE post_id = ?);", id)
+	db.Exec("DELETE FROM comment_dislike WHERE comments_id IN (SELECT id FROM comments WHERE post_id = ?);", id)
+	db.Exec("DELETE FROM comments WHERE post_id = ?;", id)
+	db.Exec("DELETE FROM post_like WHERE post_id = ?;", id)
+	db.Exec("DELETE FROM post_dislike WHERE post_id = ?;", id)
+	db.Exec("DELETE FROM posts WHERE id = ?;", id)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -208,20 +184,8 @@ func deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username, err := getCurrentUserID(nil, r)
+	userID, err := getCurrentUserID(w, r)
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	userIDRaw, err := getUserIDValue(username)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	userID, ok := userIDRaw.(int)
-	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}

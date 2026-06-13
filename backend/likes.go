@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func alreadyLiked(postid string, userID string) bool {
@@ -205,8 +206,7 @@ func ToggleCommentLikeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = toggleCommentLike(commentID, userID)
-
+	err = toggleCommentLike(commentID, strconv.Itoa(userID))
 	if err != nil {
 		log.Println(err)
 		serverError(w)
@@ -231,8 +231,7 @@ func ToggleCommentDislikeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = toggleCommentDislike(commentID, userID)
-
+	err = toggleCommentDislike(commentID, strconv.Itoa(userID))
 	if err != nil {
 		log.Println(err)
 		serverError(w)
@@ -255,7 +254,7 @@ func ToggleLikeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	err = toggleLike(postID, userID)
+	err = toggleLike(postID, strconv.Itoa(userID))
 	if err != nil {
 		log.Println(err)
 		serverError(w)
@@ -277,7 +276,7 @@ func ToggleDislikeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	err = toggleDislike(postID, userID)
+	err = toggleDislike(postID, strconv.Itoa(userID))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

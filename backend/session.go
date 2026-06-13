@@ -2,9 +2,9 @@ package backend
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/gorilla/sessions"
 )
@@ -27,26 +27,25 @@ func getSession(w http.ResponseWriter, r *http.Request) (*sessions.Session, erro
 	return session, nil
 }
 
-func getCurrentUserID(w http.ResponseWriter, r *http.Request) (string, error) {
+var errNotAuthenticated = errors.New("not authenticated")
+
+func getCurrentUserID(w http.ResponseWriter, r *http.Request) (int, error) {
 	session, err := getSession(w, r)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
-	switch v := session.Values["user_id"].(type) {
-	case int:
-		return strconv.Itoa(v), nil
-	case string:
-		return v, nil
-	default:
-		return "", nil
+	id, ok := session.Values["user_id"].(int)
+	if !ok || id == 0 {
+		return 0, errNotAuthenticated
 	}
+	return id, nil
 }
 
 func isAuthenticated(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := getCurrentUserID(w, r)
-		if err != nil || userID == "" {
+		if err != nil || userID == 0 {
 			if r.Header.Get("Accept") == "application/json" {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
