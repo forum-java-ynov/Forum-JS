@@ -13,6 +13,9 @@ import (
 
 var dbPath = "database/database.db"
 
+// DB est le pool de connexions global accessible par tout le package backend
+var DB *sql.DB
+
 type Comment struct {
 	ID       int
 	Username string
@@ -33,29 +36,25 @@ type Post struct {
 	Comments  []Comment
 }
 
-func CreateDatabase() {
+// InitDB initialise la connexion globale à SQLite et crée les tables
+func InitDB() {
 	os.MkdirAll("database", 0755)
 
-	db, err := sql.Open("sqlite", dbPath)
+	var err error
+	DB, err = sql.Open("sqlite", dbPath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Impossible d'ouvrir la base de données: %v", err)
 	}
-	defer db.Close()
 
-	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+	if err := DB.Ping(); err != nil {
+		log.Fatalf("La base de données ne répond pas: %v", err)
 	}
 
 	log.Println("Connecté à " + dbPath)
+	createTables()
 }
 
-func CreateTables() {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
+func createTables() {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS users (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -113,8 +112,8 @@ func CreateTables() {
 	}
 
 	for _, q := range queries {
-		if _, err := db.Exec(q); err != nil {
-			log.Fatal(err)
+		if _, err := DB.Exec(q); err != nil {
+			log.Fatalf("Erreur lors de la création des tables: %v", err)
 		}
 	}
 }
@@ -134,21 +133,15 @@ func insertUser(fullName, username, email, password, verifPassword string) error
 		return fmt.Errorf("passwords do not match")
 	}
 
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
 	hpassword, err := HashPassword(password)
 	if err != nil {
 		return err
 	}
 
-	_, err = db.Exec(`
-    INSERT INTO users (full_name, username, email, password) 
-    VALUES (?, ?, ?, ?);
-    `, fullName, username, email, hpassword)
+	_, err = DB.Exec(`
+		INSERT INTO users (full_name, username, email, password) 
+		VALUES (?, ?, ?, ?);
+	`, fullName, username, email, hpassword)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "users.email") {
@@ -164,14 +157,8 @@ func insertUser(fullName, username, email, password, verifPassword string) error
 }
 
 func loginUser(username, password string) (bool, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return false, err
-	}
-	defer db.Close()
-
 	var storedPassword string
-	err = db.QueryRow(`SELECT password FROM users WHERE username = ?;`, username).Scan(&storedPassword)
+	err := DB.QueryRow(`SELECT password FROM users WHERE username = ?;`, username).Scan(&storedPassword)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, nil
@@ -182,47 +169,16 @@ func loginUser(username, password string) (bool, error) {
 	return CheckPasswordHash(password, storedPassword), nil
 }
 
-func getUserIDValue(userID string) (int, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return 0, err
-	}
-	defer db.Close()
-
-	var id int
-	err = db.QueryRow("SELECT id FROM users WHERE username = ? OR email = ? OR google_id = ?;", userID, userID, userID).Scan(&id)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, fmt.Errorf("utilisateur introuvable pour l'identifiant %q", userID)
-		}
-		return 0, err
-	}
-
-	return id, nil
-}
-
 func addPost(title, content, imagePath, theme string, userID int) error {
-	conn, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	_, err = conn.Exec(`
-        INSERT INTO posts (title, content, image_path, theme, user_id) 
-        VALUES (?, ?, ?, ?, ?);
-    `, title, content, imagePath, theme, userID)
+	_, err := DB.Exec(`
+		INSERT INTO posts (title, content, image_path, theme, user_id) 
+		VALUES (?, ?, ?, ?, ?);
+	`, title, content, imagePath, theme, userID)
 	return err
 }
 
 func getPosts() ([]Post, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
-	rows, err := db.Query(`
+	rows, err := DB.Query(`
 		SELECT 
 			posts.id,
 			posts.title,
@@ -248,9 +204,11 @@ func getPosts() ([]Post, error) {
 		var id, likes, dislikes int
 		var title, content, theme, username string
 		var imagePath sql.NullString
+
 		if err := rows.Scan(&id, &title, &content, &imagePath, &theme, &username, &likes, &dislikes); err != nil {
 			return nil, err
 		}
+
 		post := Post{
 			ID:       id,
 			Title:    title,
@@ -269,26 +227,14 @@ func getPosts() ([]Post, error) {
 }
 
 func addComment(postID int, userID int, content string) error {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec(`
+	_, err := DB.Exec(`
 		INSERT INTO comments (post_id, user_id, content)
 		VALUES (?, ?, ?);
 	`, postID, userID, content)
-
 	return err
 }
-func getComments(postID string) ([]Comment, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
 
+func getComments(postID int) ([]Comment, error) {
 	query := `
 		SELECT 
 			comments.id, 
@@ -304,7 +250,7 @@ func getComments(postID string) ([]Comment, error) {
 		GROUP BY comments.id;
 	`
 
-	rows, err := db.Query(query, postID)
+	rows, err := DB.Query(query, postID)
 	if err != nil {
 		return nil, err
 	}
@@ -322,142 +268,65 @@ func getComments(postID string) ([]Comment, error) {
 }
 
 func deletePost(id int) error {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec(`DELETE FROM posts WHERE id = ?;`, id)
+	_, err := DB.Exec(`DELETE FROM posts WHERE id = ?;`, id)
 	return err
 }
 
 func userExistsByEmail(email string) (bool, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return false, err
-	}
-	defer db.Close()
-
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", email).Scan(&count)
+	err := DB.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", email).Scan(&count)
 	return count > 0, err
 }
 
 func insertGoogleUser(name, email, googleID string) error {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec(
+	_, err := DB.Exec(
 		"INSERT INTO users (full_name, username, email, google_id) VALUES (?, ?, ?, ?)",
 		name, name, email, googleID,
 	)
 	return err
 }
 
-func likepost(postid string, userID string) error {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec("INSERT INTO post_like (post_id, user_id) VALUES (?, ?)", postid, userID)
+func insertPostLike(postID int, userID int) error {
+	_, err := DB.Exec("INSERT INTO post_like (post_id, user_id) VALUES (?, ?)", postID, userID)
 	return err
 }
 
-func dislikepost(postid string, userID string) error {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec("INSERT INTO post_dislike (post_id, user_id) VALUES (?, ?)", postid, userID)
+func insertPostDislike(postID int, userID int) error {
+	_, err := DB.Exec("INSERT INTO post_dislike (post_id, user_id) VALUES (?, ?)", postID, userID)
 	return err
 }
 
-func likecomment(commentid string, userID string) error {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec("INSERT INTO comment_like (comments_id, user_id) VALUES (?, ?)", commentid, userID)
+func insertCommentLike(commentID int, userID int) error {
+	_, err := DB.Exec("INSERT INTO comment_like (comments_id, user_id) VALUES (?, ?)", commentID, userID)
 	return err
 }
 
-func dislikecomment(commentid string, userID string) error {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec("INSERT INTO comment_dislike (comments_id, user_id) VALUES (?, ?)", commentid, userID)
+func insertCommentDislike(commentID int, userID int) error {
+	_, err := DB.Exec("INSERT INTO comment_dislike (comments_id, user_id) VALUES (?, ?)", commentID, userID)
 	return err
 }
 
-func deletelikecomment(commentid string, userID string) error {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec("DELETE FROM comment_like WHERE comments_id = ? AND user_id = ?;", commentid, userID)
+func deleteCommentLike(commentID int, userID int) error {
+	_, err := DB.Exec("DELETE FROM comment_like WHERE comments_id = ? AND user_id = ?;", commentID, userID)
 	return err
 }
 
-func deletedislikecomment(commentid string, userID string) error {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec("DELETE FROM comment_dislike WHERE comments_id = ? AND user_id = ?;", commentid, userID)
+func deleteCommentDislike(commentID int, userID int) error {
+	_, err := DB.Exec("DELETE FROM comment_dislike WHERE comments_id = ? AND user_id = ?;", commentID, userID)
 	return err
 }
 
-func deletelikepost(postid string, userID string) error {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec("DELETE FROM post_like WHERE post_id = ? AND user_id = ?;", postid, userID)
+func deletePostLike(postID int, userID int) error {
+	_, err := DB.Exec("DELETE FROM post_like WHERE post_id = ? AND user_id = ?;", postID, userID)
 	return err
 }
 
-func deletedislikepost(postid string, userID string) error {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec("DELETE FROM post_dislike WHERE post_id = ? AND user_id = ?;", postid, userID)
+func deletePostDislike(postID int, userID int) error {
+	_, err := DB.Exec("DELETE FROM post_dislike WHERE post_id = ? AND user_id = ?;", postID, userID)
 	return err
 }
 
-func editcomment(commentID int, content string, userID string) error {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	uid, err := getUserIDValue(userID)
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec("UPDATE comments SET content = ? WHERE id = ? AND user_id = ?;", content, commentID, uid)
+func editComment(commentID int, content string, userID int) error {
+	_, err := DB.Exec("UPDATE comments SET content = ? WHERE id = ? AND user_id = ?;", content, commentID, userID)
 	return err
 }

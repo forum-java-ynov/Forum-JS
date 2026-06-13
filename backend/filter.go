@@ -1,7 +1,6 @@
 package backend
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 )
@@ -11,7 +10,7 @@ func filterPostsHandler(w http.ResponseWriter, r *http.Request) {
 	posts, err := filterPostsByTheme(theme)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w)
 		return
 	}
 
@@ -20,12 +19,6 @@ func filterPostsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func filterPostsByTheme(theme string) ([]Post, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
 	query := `
 		SELECT posts.id, posts.title, posts.content, posts.theme,
 		       COALESCE(users.full_name, users.username, 'Utilisateur')
@@ -38,7 +31,7 @@ func filterPostsByTheme(theme string) ([]Post, error) {
 		args = append(args, theme)
 	}
 
-	rows, err := db.Query(query, args...)
+	rows, err := DB.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}

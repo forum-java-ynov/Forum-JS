@@ -21,8 +21,8 @@ var errorMessages = map[int]string{
 	http.StatusUnauthorized:        "You need to be logged in",
 	http.StatusForbidden:           "Permission needed",
 	http.StatusNotFound:            "Page not Found",
-	http.StatusMethodNotAllowed:    "unauthorized method",
-	http.StatusInternalServerError: "Internal error Occured",
+	http.StatusMethodNotAllowed:    "Unauthorized method",
+	http.StatusInternalServerError: "Internal error Occurred",
 }
 
 func httpError(w http.ResponseWriter, code int) {
@@ -75,8 +75,7 @@ type IndexData struct {
 
 func showIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
-		w.WriteHeader(http.StatusNotFound)
-		http.ServeFile(w, r, "frontend/html/404.html")
+		httpError(w, http.StatusNotFound)
 		return
 	}
 
@@ -97,7 +96,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for i := range posts {
-		comments, err := getComments(fmt.Sprint(posts[i].ID))
+		comments, err := getComments(posts[i].ID)
 		if err != nil {
 			log.Println("Erreur lors de la récupération des commentaires:", err)
 			serverError(w)
@@ -114,6 +113,9 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func Server() {
+	// Lancement de la connexion de la DB au tout début
+	InitDB()
+
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("frontend/js"))))
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("frontend/css"))))
 	http.Handle("/frontend/", http.StripPrefix("/frontend/", http.FileServer(http.Dir("frontend"))))
@@ -127,14 +129,16 @@ func Server() {
 		http.ServeFile(w, r, "frontend/html/login.html")
 	})
 	http.HandleFunc("/404", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "frontend/html/404.html")
+		httpError(w, http.StatusNotFound)
 	})
-	//auth google
+
+	// auth google
 	http.HandleFunc("/auth/logout", handleLogout)
 	http.HandleFunc("/api/me", isAuthenticated(handleMe))
 	http.HandleFunc("/auth/google/login", handleGoogleLogin)
 	http.HandleFunc("/auth/google/callback", handleGoogleCallback)
 
+	// test d'erreurs
 	http.HandleFunc("/test500", func(w http.ResponseWriter, r *http.Request) {
 		serverError(w)
 	})
@@ -145,20 +149,23 @@ func Server() {
 		httpError(w, http.StatusUnauthorized)
 	})
 
+	// Routes DataBase
 	http.HandleFunc("/db/register", register)
 	http.HandleFunc("/db/login", login)
-	http.HandleFunc("/db/create_post", isAuthenticated(createPost))
-	http.HandleFunc("/db/posts", showPosts)
+	http.HandleFunc("/db/create_post", isAuthenticated(createPostHandler))
+	http.HandleFunc("/db/posts", showPostsHandler)
 	http.HandleFunc("/db/delete_post", isAuthenticated(deletePostHandler))
+
+	http.HandleFunc("/db/create_comment", isAuthenticated(createCommentHandler))
+	http.HandleFunc("/db/comments", showCommentsHandler)
+	http.HandleFunc("/db/edit_comment", isAuthenticated(editCommentHandler))
 	http.HandleFunc("/db/delete_comment", isAuthenticated(deleteCommentHandler))
-	http.HandleFunc("/db/create_commente", isAuthenticated(createCommente))
-	http.HandleFunc("/db/comments", showComments)
-	http.HandleFunc("/db/edit_commente", isAuthenticated(editComment))
+
 	http.HandleFunc("/db/toggle_like", isAuthenticated(ToggleLikeHandler))
 	http.HandleFunc("/db/toggle_dislike", isAuthenticated(ToggleDislikeHandler))
 	http.HandleFunc("/db/toggle_comment_like", isAuthenticated(ToggleCommentLikeHandler))
 	http.HandleFunc("/db/toggle_comment_dislike", isAuthenticated(ToggleCommentDislikeHandler))
 
-	fmt.Println("http://localhost:8082")
+	fmt.Println("Server running at http://localhost:8082")
 	http.ListenAndServe(":8082", nil)
 }

@@ -7,27 +7,27 @@ import (
 	"strconv"
 )
 
-func createCommente(w http.ResponseWriter, r *http.Request) {
+func createCommentHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
 	postID, err := strconv.Atoi(r.FormValue("post_id"))
 	if err != nil {
-		http.Error(w, "post_id invalide", http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
 	content := r.FormValue("content")
 	if content == "" {
-		http.Error(w, "content vide", http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
 	userID, err := getCurrentUserID(w, r)
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		httpError(w, http.StatusUnauthorized)
 		return
 	}
 
@@ -40,10 +40,12 @@ func createCommente(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func showComments(w http.ResponseWriter, r *http.Request) {
-	postID := r.URL.Query().Get("post_id")
-	if postID == "" {
-		http.Error(w, "post_id manquant", http.StatusBadRequest)
+func showCommentsHandler(w http.ResponseWriter, r *http.Request) {
+	postIDStr := r.URL.Query().Get("post_id")
+	postID, err := strconv.Atoi(postIDStr)
+
+	if err != nil || postIDStr == "" {
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
@@ -58,32 +60,31 @@ func showComments(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(comments)
 }
 
-func editComment(w http.ResponseWriter, r *http.Request) {
+func editCommentHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
 	commentID, err := strconv.Atoi(r.FormValue("comment_id"))
 	if err != nil {
-		http.Error(w, "comment_id invalide", http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
 	content := r.FormValue("content")
 	if content == "" {
-		http.Error(w, "content vide", http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
 	userID, err := getCurrentUserID(w, r)
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		httpError(w, http.StatusUnauthorized)
 		return
 	}
 
-	// Conversion de l'int en string pour matcher la signature attendue par editcomment
-	if err := editcomment(commentID, content, strconv.Itoa(userID)); err != nil {
+	if err := editComment(commentID, content, userID); err != nil {
 		log.Println(err)
 		serverError(w)
 		return

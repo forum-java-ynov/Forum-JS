@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"crypto/rand"
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -15,8 +14,6 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
-
-// -- Structs --
 
 type LoginData struct {
 	Username string `json:"username"`
@@ -45,8 +42,6 @@ type GoogleUserInfo struct {
 	Picture string `json:"picture"`
 }
 
-// -- OAuth --
-
 var googleOauthConfig = &oauth2.Config{
 	ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 	ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
@@ -55,8 +50,6 @@ var googleOauthConfig = &oauth2.Config{
 	Endpoint:     google.Endpoint,
 }
 
-// generateStateToken returns a cryptographically random base64 string
-// used as a per-request CSRF token for the OAuth flow.
 func generateStateToken() (string, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
@@ -65,49 +58,24 @@ func generateStateToken() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-// -- DB helpers --
-
-// getUserByUsername fetches a user's full record from the DB by their username.
 func getUserByUsername(username string) (User, error) {
-	conn, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return User{}, err
-	}
-	defer conn.Close()
-
 	var user User
-	err = conn.QueryRow(
+	err := DB.QueryRow(
 		"SELECT id, full_name, username, email FROM users WHERE username = ?",
 		username,
 	).Scan(&user.ID, &user.FullName, &user.Username, &user.Email)
-	if err != nil {
-		return User{}, err
-	}
-	return user, nil
+	return user, err
 }
 
-// getUserByEmail fetches a user's full record from the DB by their email.
-// Used after Google OAuth to resolve the canonical DB user.
 func getUserByEmail(email string) (User, error) {
-	conn, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return User{}, err
-	}
-	defer conn.Close()
-
 	var user User
-	err = conn.QueryRow(
+	err := DB.QueryRow(
 		"SELECT id, full_name, username, email FROM users WHERE email = ?",
 		email,
 	).Scan(&user.ID, &user.FullName, &user.Username, &user.Email)
-	if err != nil {
-		return User{}, err
-	}
-	return user, nil
+	return user, err
 }
 
-// sessionDisplayName resolves the best available display name from session values,
-// falling back from name → email → user ID.
 func sessionDisplayName(values map[interface{}]interface{}) string {
 	if name, _ := values["user_name"].(string); name != "" {
 		return name
@@ -121,24 +89,22 @@ func sessionDisplayName(values map[interface{}]interface{}) string {
 	return "Unknown"
 }
 
-// -- Auth handlers --
-
 func login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httpError(w, http.StatusMethodNotAllowed)
 		return
 	}
 
 	var credentials LoginData
 	if err := decodeRequest(r, &credentials); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
 	credentials.Username = strings.TrimSpace(credentials.Username)
 
 	if credentials.Username == "" || credentials.Password == "" {
-		http.Error(w, "Username and password are required", http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
@@ -149,7 +115,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !ok {
-		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		httpError(w, http.StatusUnauthorized)
 		return
 	}
 
@@ -166,6 +132,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		serverError(w)
 		return
 	}
+
 	session.Values["user_id"] = user.ID
 	session.Values["user_email"] = user.Email
 	session.Values["user_name"] = user.FullName
@@ -180,13 +147,13 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 func register(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httpError(w, http.StatusMethodNotAllowed)
 		return
 	}
 
 	var formData RegisterData
 	if err := decodeRequest(r, &formData); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
@@ -194,14 +161,13 @@ func register(w http.ResponseWriter, r *http.Request) {
 	formData.Username = strings.TrimSpace(formData.Username)
 	formData.Email = strings.TrimSpace(formData.Email)
 
-	if formData.FullName == "" || formData.Username == "" || formData.Email == "" ||
-		formData.Password == "" || formData.ConfirmPassword == "" {
-		http.Error(w, "All fields are required", http.StatusBadRequest)
+	if formData.FullName == "" || formData.Username == "" || formData.Email == "" || formData.Password == "" || formData.ConfirmPassword == "" {
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
 	if err := insertUser(formData.FullName, formData.Username, formData.Email, formData.Password, formData.ConfirmPassword); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
@@ -212,7 +178,7 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	session, err := getSession(w, r)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "Session error", http.StatusInternalServerError)
+		serverError(w)
 		return
 	}
 	session.Options.MaxAge = -1
@@ -228,13 +194,13 @@ func handleMe(w http.ResponseWriter, r *http.Request) {
 	session, err := getSession(w, r)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "Session error", http.StatusInternalServerError)
+		serverError(w)
 		return
 	}
 
 	userID, ok := session.Values["user_id"].(int)
 	if !ok || userID == 0 {
-		http.Error(w, "Not authenticated", http.StatusUnauthorized)
+		httpError(w, http.StatusUnauthorized)
 		return
 	}
 
@@ -285,31 +251,30 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 
 	expectedState, _ := session.Values["oauth_state"].(string)
 	if expectedState == "" || r.FormValue("state") != expectedState {
-		http.Error(w, "Invalid OAuth state", http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
 	token, err := googleOauthConfig.Exchange(context.Background(), r.FormValue("code"))
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "Failed to exchange authorization code", http.StatusInternalServerError)
+		serverError(w)
 		return
 	}
 
 	userInfo, err := fetchGoogleUserInfo(token)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "Failed to fetch Google profile", http.StatusInternalServerError)
+		serverError(w)
 		return
 	}
 
 	if err := loginOrRegisterGoogleUser(userInfo); err != nil {
 		log.Println(err)
-		http.Error(w, "Google login failed", http.StatusInternalServerError)
+		serverError(w)
 		return
 	}
 
-	// Fetch the canonical DB record so user_id is always an int, consistent with regular login.
 	user, err := getUserByEmail(userInfo.Email)
 	if err != nil {
 		log.Println(err)
@@ -327,6 +292,7 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	session.Values["user_email"] = user.Email
 	session.Values["user_name"] = displayName
 	session.Values["user_picture"] = userInfo.Picture
+
 	if err := session.Save(r, w); err != nil {
 		log.Println(err)
 		serverError(w)
@@ -354,13 +320,7 @@ func fetchGoogleUserInfo(token *oauth2.Token) (*GoogleUserInfo, error) {
 }
 
 func updateGoogleID(email, googleID string) error {
-	conn, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	_, err = conn.Exec(
+	_, err := DB.Exec(
 		"UPDATE users SET google_id = ? WHERE email = ? AND (google_id IS NULL OR google_id = '');",
 		googleID, email,
 	)

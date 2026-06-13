@@ -1,204 +1,122 @@
 package backend
 
 import (
-	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
 )
 
-func alreadyLiked(postid string, userID string) bool {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return false
-	}
-	defer db.Close()
-
+func alreadyLiked(postID int, userID int) bool {
 	var count int
-
-	err = db.QueryRow(`
-	SELECT COUNT(*) 
-	FROM post_like 
-	WHERE post_id = ? AND user_id = ?;
-	`, postid, userID).Scan(&count)
-
-	if err != nil {
-		return false
-	}
-
-	return count > 0
+	err := DB.QueryRow(`
+		SELECT COUNT(*) FROM post_like WHERE post_id = ? AND user_id = ?;
+	`, postID, userID).Scan(&count)
+	return err == nil && count > 0
 }
 
-func toggleLike(postid string, userID string) error {
+func alreadyDisliked(postID int, userID int) bool {
+	var count int
+	err := DB.QueryRow(`
+		SELECT COUNT(*) FROM post_dislike WHERE post_id = ? AND user_id = ?;
+	`, postID, userID).Scan(&count)
+	return err == nil && count > 0
+}
 
-	if alreadyLiked(postid, userID) {
-		return deletelikepost(postid, userID)
+func toggleLike(postID int, userID int) error {
+	if alreadyLiked(postID, userID) {
+		return deletePostLike(postID, userID)
 	}
-
-	if alreadyDisliked(postid, userID) {
-		if err := deletedislikepost(postid, userID); err != nil {
+	if alreadyDisliked(postID, userID) {
+		if err := deletePostDislike(postID, userID); err != nil {
 			return err
 		}
 	}
-
-	return likepost(postid, userID)
+	return insertPostLike(postID, userID)
 }
 
-func alreadyDisliked(postid string, userID string) bool {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return false
+func toggleDislike(postID int, userID int) error {
+	if alreadyDisliked(postID, userID) {
+		return deletePostDislike(postID, userID)
 	}
-	defer db.Close()
-
-	var count int
-
-	err = db.QueryRow(`
-	SELECT COUNT(*) 
-	FROM post_dislike 
-	WHERE post_id = ? AND user_id = ?;
-	`, postid, userID).Scan(&count)
-
-	if err != nil {
-		return false
-	}
-
-	return count > 0
-}
-
-func toggleDislike(postid string, userID string) error {
-	if alreadyDisliked(postid, userID) {
-		return deletedislikepost(postid, userID)
-	}
-
-	if alreadyLiked(postid, userID) {
-		if err := deletelikepost(postid, userID); err != nil {
+	if alreadyLiked(postID, userID) {
+		if err := deletePostLike(postID, userID); err != nil {
 			return err
 		}
 	}
-
-	return dislikepost(postid, userID)
+	return insertPostDislike(postID, userID)
 }
 
-func alreadyLikedComment(commentid string, userID string) bool {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return false
-	}
-	defer db.Close()
-
+func alreadyLikedComment(commentID int, userID int) bool {
 	var count int
-
-	err = db.QueryRow(`
-	SELECT COUNT(*) 
-	FROM comment_like 
-	WHERE comments_id = ? AND user_id = ?;
-	`, commentid, userID).Scan(&count)
-
-	if err != nil {
-		return false
-	}
-
-	return count > 0
+	err := DB.QueryRow(`
+		SELECT COUNT(*) FROM comment_like WHERE comments_id = ? AND user_id = ?;
+	`, commentID, userID).Scan(&count)
+	return err == nil && count > 0
 }
 
-func alreadyDislikedComment(commentid string, userID string) bool {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return false
-	}
-	defer db.Close()
-
+func alreadyDislikedComment(commentID int, userID int) bool {
 	var count int
-
-	err = db.QueryRow(`
-	SELECT COUNT(*) 
-	FROM comment_dislike 
-	WHERE comments_id = ? AND user_id = ?;
-	`, commentid, userID).Scan(&count)
-
-	if err != nil {
-		return false
-	}
-
-	return count > 0
+	err := DB.QueryRow(`
+		SELECT COUNT(*) FROM comment_dislike WHERE comments_id = ? AND user_id = ?;
+	`, commentID, userID).Scan(&count)
+	return err == nil && count > 0
 }
 
-func toggleCommentLike(commentid string, userID string) error {
-	if alreadyLikedComment(commentid, userID) {
-		return deletelikecomment(commentid, userID)
+func toggleCommentLike(commentID int, userID int) error {
+	if alreadyLikedComment(commentID, userID) {
+		return deleteCommentLike(commentID, userID)
 	}
-
-	if alreadyDislikedComment(commentid, userID) {
-		if err := deletedislikecomment(commentid, userID); err != nil {
+	if alreadyDislikedComment(commentID, userID) {
+		if err := deleteCommentDislike(commentID, userID); err != nil {
 			return err
 		}
 	}
-
-	return likecomment(commentid, userID)
+	return insertCommentLike(commentID, userID)
 }
 
-func toggleCommentDislike(commentid string, userID string) error {
-	if alreadyDislikedComment(commentid, userID) {
-		return deletedislikecomment(commentid, userID)
+func toggleCommentDislike(commentID int, userID int) error {
+	if alreadyDislikedComment(commentID, userID) {
+		return deleteCommentDislike(commentID, userID)
 	}
-
-	if alreadyLikedComment(commentid, userID) {
-		if err := deletelikecomment(commentid, userID); err != nil {
+	if alreadyLikedComment(commentID, userID) {
+		if err := deleteCommentLike(commentID, userID); err != nil {
 			return err
 		}
 	}
-
-	return dislikecomment(commentid, userID)
+	return insertCommentDislike(commentID, userID)
 }
 
-func getPostLikeCount(postID string) (int, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return 0, err
-	}
-	defer db.Close()
+func getPostLikeCount(postID int) (int, error) {
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM post_like WHERE post_id = ?", postID).Scan(&count)
+	err := DB.QueryRow("SELECT COUNT(*) FROM post_like WHERE post_id = ?", postID).Scan(&count)
 	return count, err
 }
 
-func getPostDislikeCount(postID string) (int, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return 0, err
-	}
-	defer db.Close()
+func getPostDislikeCount(postID int) (int, error) {
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM post_dislike WHERE post_id = ?", postID).Scan(&count)
+	err := DB.QueryRow("SELECT COUNT(*) FROM post_dislike WHERE post_id = ?", postID).Scan(&count)
 	return count, err
 }
 
-func getCommentLikeCount(commentID string) (int, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return 0, err
-	}
-	defer db.Close()
+func getCommentLikeCount(commentID int) (int, error) {
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM comment_like WHERE comments_id = ?", commentID).Scan(&count)
+	err := DB.QueryRow("SELECT COUNT(*) FROM comment_like WHERE comments_id = ?", commentID).Scan(&count)
 	return count, err
 }
 
-func getCommentDislikeCount(commentID string) (int, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return 0, err
-	}
-	defer db.Close()
+func getCommentDislikeCount(commentID int) (int, error) {
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM comment_dislike WHERE comments_id = ?", commentID).Scan(&count)
+	err := DB.QueryRow("SELECT COUNT(*) FROM comment_dislike WHERE comments_id = ?", commentID).Scan(&count)
 	return count, err
 }
 
 func ToggleCommentLikeHandler(w http.ResponseWriter, r *http.Request) {
-	commentID := r.URL.Query().Get("id")
+	commentID, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		httpError(w, http.StatusBadRequest)
+		return
+	}
 
 	userID, err := getCurrentUserID(w, r)
 	if err != nil {
@@ -206,8 +124,7 @@ func ToggleCommentLikeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = toggleCommentLike(commentID, strconv.Itoa(userID))
-	if err != nil {
+	if err = toggleCommentLike(commentID, userID); err != nil {
 		log.Println(err)
 		serverError(w)
 		return
@@ -223,7 +140,11 @@ func ToggleCommentLikeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ToggleCommentDislikeHandler(w http.ResponseWriter, r *http.Request) {
-	commentID := r.URL.Query().Get("id")
+	commentID, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		httpError(w, http.StatusBadRequest)
+		return
+	}
 
 	userID, err := getCurrentUserID(w, r)
 	if err != nil {
@@ -231,8 +152,7 @@ func ToggleCommentDislikeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = toggleCommentDislike(commentID, strconv.Itoa(userID))
-	if err != nil {
+	if err = toggleCommentDislike(commentID, userID); err != nil {
 		log.Println(err)
 		serverError(w)
 		return
@@ -248,18 +168,24 @@ func ToggleCommentDislikeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ToggleLikeHandler(w http.ResponseWriter, r *http.Request) {
-	postID := r.URL.Query().Get("id")
+	postID, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		httpError(w, http.StatusBadRequest)
+		return
+	}
+
 	userID, err := getCurrentUserID(w, r)
 	if err != nil {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	err = toggleLike(postID, strconv.Itoa(userID))
-	if err != nil {
+
+	if err = toggleLike(postID, userID); err != nil {
 		log.Println(err)
 		serverError(w)
 		return
 	}
+
 	newLikeCount, _ := getPostLikeCount(postID)
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
@@ -270,17 +196,24 @@ func ToggleLikeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ToggleDislikeHandler(w http.ResponseWriter, r *http.Request) {
-	postID := r.URL.Query().Get("id")
+	postID, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		httpError(w, http.StatusBadRequest)
+		return
+	}
+
 	userID, err := getCurrentUserID(w, r)
 	if err != nil {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	err = toggleDislike(postID, strconv.Itoa(userID))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	if err = toggleDislike(postID, userID); err != nil {
+		log.Println(err)
+		serverError(w)
 		return
 	}
+
 	newDislikeCount, _ := getPostDislikeCount(postID)
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")

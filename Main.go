@@ -9,11 +9,6 @@ import (
 func main() {
 	// Charger le .env
 	godotenv.Load()
-	// Création de la base de données
-	backend.CreateDatabase()
-
-	// Création des tables
-	backend.CreateTables()
 
 	// Démarrage du serveur
 	backend.Server()

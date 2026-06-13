@@ -24,20 +24,20 @@ const maxImageSize = 800
 
 var allowedTypes = map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true}
 
-func createPost(w http.ResponseWriter, r *http.Request) {
+func createPostHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
 	title := r.FormValue("title")
 	content := r.FormValue("content")
-	imagePath := ""
 	theme := r.FormValue("theme")
+	imagePath := ""
 
 	userID, err := getCurrentUserID(w, r)
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		httpError(w, http.StatusUnauthorized)
 		return
 	}
 
@@ -47,29 +47,29 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 
 		ext := strings.ToLower(filepath.Ext(handler.Filename))
 		if !allowedTypes[ext] {
-			http.Error(w, "Type de fichier non autorisé", http.StatusBadRequest)
+			httpError(w, http.StatusBadRequest)
 			return
 		}
 
 		if err := os.MkdirAll(uploadDir, 0755); err != nil {
-			log.Println(err)
+			log.Println("Erreur de création de dossier:", err)
 			serverError(w)
 			return
 		}
 
 		img, _, decodeErr := image.Decode(file)
 		if decodeErr != nil {
-			http.Error(w, "Impossible de décoder l'image", http.StatusBadRequest)
+			httpError(w, http.StatusBadRequest)
 			return
 		}
 
 		resizedImg := imaging.Fit(img, maxImageSize, maxImageSize, imaging.Lanczos)
-
 		imagePath = fmt.Sprintf("%s%s", uuid.New().String(), ext)
 		dstPath := filepath.Join(uploadDir, imagePath)
+
 		dst, createErr := os.Create(dstPath)
 		if createErr != nil {
-			log.Println(err)
+			log.Println("Erreur lors de la création du fichier image:", createErr)
 			serverError(w)
 			return
 		}
@@ -87,17 +87,21 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 			io.Copy(dst, file)
 		}
 	} else if err != http.ErrMissingFile {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
-	addPost(title, content, imagePath, theme, userID)
+	if err := addPost(title, content, imagePath, theme, userID); err != nil {
+		log.Println("Erreur lors de l'ajout du post:", err)
+		serverError(w)
+		return
+	}
+
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func showPosts(w http.ResponseWriter, r *http.Request) {
+func showPostsHandler(w http.ResponseWriter, r *http.Request) {
 	posts, err := getPosts()
-
 	if err != nil {
 		log.Println(err)
 		serverError(w)
@@ -110,13 +114,13 @@ func showPosts(w http.ResponseWriter, r *http.Request) {
 
 func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
-		http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+		httpError(w, http.StatusMethodNotAllowed)
 		return
 	}
 
 	sessionUserID, err := getCurrentUserID(w, r)
 	if err != nil || sessionUserID == 0 {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		httpError(w, http.StatusUnauthorized)
 		return
 	}
 
@@ -127,26 +131,18 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "ID invalide", http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
-
-	db, dbErr := sql.Open("sqlite", dbPath)
-	if dbErr != nil {
-		log.Println(dbErr)
-		serverError(w)
-		return
-	}
-	defer db.Close()
 
 	var ownerID int
-	if queryErr := db.QueryRow("SELECT user_id FROM posts WHERE id = ?;", id).Scan(&ownerID); queryErr != nil {
-		http.Error(w, "Post introuvable", http.StatusNotFound)
+	if queryErr := DB.QueryRow("SELECT user_id FROM posts WHERE id = ?;", id).Scan(&ownerID); queryErr != nil {
+		httpError(w, http.StatusNotFound)
 		return
 	}
 
 	if ownerID != sessionUserID {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		httpError(w, http.StatusUnauthorized)
 		return
 	}
 
@@ -155,12 +151,12 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 		os.Remove(filepath.Join(uploadDir, imagePath))
 	}
 
-	db.Exec("DELETE FROM comment_like WHERE comments_id IN (SELECT id FROM comments WHERE post_id = ?);", id)
-	db.Exec("DELETE FROM comment_dislike WHERE comments_id IN (SELECT id FROM comments WHERE post_id = ?);", id)
-	db.Exec("DELETE FROM comments WHERE post_id = ?;", id)
-	db.Exec("DELETE FROM post_like WHERE post_id = ?;", id)
-	db.Exec("DELETE FROM post_dislike WHERE post_id = ?;", id)
-	db.Exec("DELETE FROM posts WHERE id = ?;", id)
+	DB.Exec("DELETE FROM comment_like WHERE comments_id IN (SELECT id FROM comments WHERE post_id = ?);", id)
+	DB.Exec("DELETE FROM comment_dislike WHERE comments_id IN (SELECT id FROM comments WHERE post_id = ?);", id)
+	DB.Exec("DELETE FROM comments WHERE post_id = ?;", id)
+	DB.Exec("DELETE FROM post_like WHERE post_id = ?;", id)
+	DB.Exec("DELETE FROM post_dislike WHERE post_id = ?;", id)
+	DB.Exec("DELETE FROM posts WHERE id = ?;", id)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -169,7 +165,7 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 
 func deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
-		http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+		httpError(w, http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -180,24 +176,24 @@ func deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "ID invalide", http.StatusBadRequest)
+		httpError(w, http.StatusBadRequest)
 		return
 	}
 
 	userID, err := getCurrentUserID(w, r)
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		httpError(w, http.StatusUnauthorized)
 		return
 	}
 
 	ownerID, err := getCommentOwnerID(id)
 	if err != nil {
-		http.Error(w, "Commentaire introuvable", http.StatusNotFound)
+		httpError(w, http.StatusNotFound)
 		return
 	}
 
 	if ownerID != userID {
-		http.Error(w, "Interdit", http.StatusForbidden)
+		httpError(w, http.StatusForbidden)
 		return
 	}
 
@@ -216,40 +212,19 @@ func deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getCommentOwnerID(commentID int) (int, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return 0, err
-	}
-	defer db.Close()
-
 	var ownerID int
-	err = db.QueryRow("SELECT user_id FROM comments WHERE id = ?;", commentID).Scan(&ownerID)
-	if err != nil {
-		return 0, err
-	}
-	return ownerID, nil
+	err := DB.QueryRow("SELECT user_id FROM comments WHERE id = ?;", commentID).Scan(&ownerID)
+	return ownerID, err
 }
 
 func deleteComment(commentID int) error {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec("DELETE FROM comments WHERE id = ?;", commentID)
+	_, err := DB.Exec("DELETE FROM comments WHERE id = ?;", commentID)
 	return err
 }
 
 func getImagePath(id int) (string, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return "", err
-	}
-	defer db.Close()
-
 	var imagePath sql.NullString
-	err = db.QueryRow("SELECT image_path FROM posts WHERE id = ?;", id).Scan(&imagePath)
+	err := DB.QueryRow("SELECT image_path FROM posts WHERE id = ?;", id).Scan(&imagePath)
 	if err != nil {
 		return "", err
 	}
