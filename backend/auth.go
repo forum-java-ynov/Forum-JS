@@ -3,8 +3,10 @@ package backend
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -37,7 +39,11 @@ type GoogleUserInfo struct {
 
 // -- OAuth config --
 
-const oauthStateToken = "csrf-state-token"
+func generateStateToken() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return base64.URLEncoding.EncodeToString(b)
+}
 
 var googleOauthConfig = &oauth2.Config{
 	ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
