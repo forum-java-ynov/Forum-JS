@@ -7,9 +7,9 @@ import (
 )
 
 func main() {
-	// Charger le .env
+	// load .env
 	godotenv.Load()
 
-	// Démarrage du serveur
+	// Start server
 	backend.Server()
 }

@@ -118,7 +118,6 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func Server() {
-	// Lancement de la connexion de la DB au tout début
 	InitDB()
 
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("frontend/js"))))
@@ -143,7 +142,7 @@ func Server() {
 	http.HandleFunc("/auth/google/login", handleGoogleLogin)
 	http.HandleFunc("/auth/google/callback", handleGoogleCallback)
 
-	// test d'erreurs
+	// error tests
 	http.HandleFunc("/test500", func(w http.ResponseWriter, r *http.Request) {
 		serverError(w)
 	})

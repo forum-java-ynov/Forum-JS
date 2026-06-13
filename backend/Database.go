@@ -13,7 +13,6 @@ import (
 
 var dbPath = "database/database.db"
 
-// DB est le pool de connexions global accessible par tout le package backend
 var DB *sql.DB
 
 type Comment struct {
@@ -36,7 +35,7 @@ type Post struct {
 	Comments  []Comment
 }
 
-// InitDB initialise la connexion globale à SQLite et crée les tables
+// InitDB int sqlite connectionand create necesarry tables
 func InitDB() {
 	os.MkdirAll("database", 0755)
 
