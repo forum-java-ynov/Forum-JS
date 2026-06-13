@@ -1,12 +1,17 @@
 package backend
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
+	"syscall"
+	"time"
 )
 
 var templates = loadTemplates()
@@ -166,6 +171,33 @@ func Server() {
 	http.HandleFunc("/db/toggle_comment_like", isAuthenticated(ToggleCommentLikeHandler))
 	http.HandleFunc("/db/toggle_comment_dislike", isAuthenticated(ToggleCommentDislikeHandler))
 
-	fmt.Println("Server running at http://localhost:8082")
-	http.ListenAndServe(":8082", nil)
+	//shutdown server
+	srv := &http.Server{Addr: ":8082"}
+
+	go func() {
+		fmt.Println("Server running at http://localhost:8082")
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatalf("Erreur du serveur: %v", err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	<-stop
+
+	fmt.Println("\nShutting down server...")
+
+	// closing db
+	if DB != nil {
+		DB.Close()
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("stopped forced %v", err)
+	}
+
+	fmt.Println("server shut down successfully")
 }
