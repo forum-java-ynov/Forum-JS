@@ -171,6 +171,12 @@ func Server() {
 		httpError(w, http.StatusUnauthorized)
 	})
 
+	//admin
+	http.HandleFunc("/admin", isAuthenticated(showAdminPanel))
+	http.HandleFunc("/admin/delete_user", isAuthenticated(adminDeleteUserHandler))
+	http.HandleFunc("/admin/delete_post", isAuthenticated(adminDeletePostHandler))
+	http.HandleFunc("/admin/promote_user", isAuthenticated(adminPromoteUserHandler))
+
 	// Routes DataBase
 	http.HandleFunc("/db/register", rateLimiter(register, 5, time.Minute))
 	http.HandleFunc("/db/login", rateLimiter(login, 5, time.Minute))
