@@ -81,7 +81,20 @@
                                 <option value="business">Buisness</option>
                             </select>
                             <div style="margin-top:10px; display:flex; gap:10px;">
+                                <label>
+                                    <input type="checkbox" name="post_liked">
+                                    liked by me
+                                </label>
+                            </div>
+                            <div style="margin-top:10px; display:flex; gap:10px;">
+                                <label>
+                                    <input type="checkbox" name="hispost">
+                                    My posts
+                                </label>
+                            </div>
+                            <div style="margin-top:10px; display:flex; gap:10px;">
                                 <button id="filter-btn" class="btn-secondary" type="submit">Filter</button>
+                                <button id="reset-filter-btn" class="btn-secondary" type="button" onclick="resetFilter()">Reset</button>
                             </div>
                         </form>
                     </div>
