@@ -159,6 +159,7 @@ func Server() {
 	http.HandleFunc("/db/create_post", isAuthenticated(createPostHandler))
 	http.HandleFunc("/db/posts", showPostsHandler)
 	http.HandleFunc("/db/delete_post", isAuthenticated(deletePostHandler))
+	http.HandleFunc("/db/edit-post", isAuthenticated(editPostHandler))
 
 	http.HandleFunc("/db/create_comment", isAuthenticated(createCommentHandler))
 	http.HandleFunc("/db/comments", showCommentsHandler)

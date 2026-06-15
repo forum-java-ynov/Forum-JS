@@ -233,3 +233,118 @@ func getImagePath(id int) (string, error) {
 	}
 	return "", nil
 }
+
+func editPostHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut && r.Method != http.MethodPost {
+		httpError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		if err := r.ParseForm(); err != nil {
+			httpError(w, http.StatusBadRequest)
+			return
+		}
+	}
+
+	sessionUserID, err := getCurrentUserID(w, r)
+	if err != nil || sessionUserID == 0 {
+		httpError(w, http.StatusUnauthorized)
+		return
+	}
+
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		idStr = r.FormValue("id")
+	}
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		httpError(w, http.StatusBadRequest)
+		return
+	}
+
+	var ownerID int
+	if queryErr := DB.QueryRow("SELECT user_id FROM posts WHERE id = ?;", id).Scan(&ownerID); queryErr != nil {
+		httpError(w, http.StatusNotFound)
+		return
+	}
+
+	if ownerID != sessionUserID {
+		httpError(w, http.StatusUnauthorized)
+		return
+	}
+
+	title := r.FormValue("title")
+	content := r.FormValue("content")
+	theme := r.FormValue("theme")
+
+	file, handler, err := r.FormFile("image")
+	if err == nil {
+		defer file.Close()
+
+		ext := strings.ToLower(filepath.Ext(handler.Filename))
+		if !allowedTypes[ext] {
+			httpError(w, http.StatusBadRequest)
+			return
+		}
+
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+			log.Println("Erreur de création de dossier:", err)
+			serverError(w)
+			return
+		}
+
+		img, _, decodeErr := image.Decode(file)
+		if decodeErr != nil {
+			httpError(w, http.StatusBadRequest)
+			return
+		}
+
+		resizedImg := imaging.Fit(img, maxImageSize, maxImageSize, imaging.Lanczos)
+		newImagePath := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+		dstPath := filepath.Join(uploadDir, newImagePath)
+
+		dst, createErr := os.Create(dstPath)
+		if createErr != nil {
+			log.Println("Erreur lors de la création du fichier image:", createErr)
+			serverError(w)
+			return
+		}
+		defer dst.Close()
+
+		switch ext {
+		case ".jpg", ".jpeg":
+			jpeg.Encode(dst, resizedImg, &jpeg.Options{Quality: 85})
+		case ".png":
+			png.Encode(dst, resizedImg)
+		}
+
+		if ext == ".gif" || ext == ".webp" {
+			file.Seek(0, 0)
+			io.Copy(dst, file)
+		}
+
+		oldImagePath, imgErr := getImagePath(id)
+		if imgErr == nil && oldImagePath != "" {
+			os.Remove(filepath.Join(uploadDir, oldImagePath))
+		}
+
+		err = editPostWithImage(id, title, content, theme, newImagePath)
+	} else if err == http.ErrMissingFile {
+		err = editPostWithoutImage(id, title, content, theme)
+	} else {
+		httpError(w, http.StatusBadRequest)
+		return
+	}
+
+	if err != nil {
+		log.Println("Erreur lors de la modification du post:", err)
+		serverError(w)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
+}

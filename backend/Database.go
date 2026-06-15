@@ -329,3 +329,13 @@ func editComment(commentID int, content string, userID int) error {
 	_, err := DB.Exec("UPDATE comments SET content = ? WHERE id = ? AND user_id = ?;", content, commentID, userID)
 	return err
 }
+
+func editPostWithImage(id int, title, content, theme, imagePath string) error {
+	_, err := DB.Exec("UPDATE posts SET title = ?, content = ?, theme = ?, image_path = ? WHERE id = ?;", title, content, theme, imagePath, id)
+	return err
+}
+
+func editPostWithoutImage(id int, title, content, theme string) error {
+	_, err := DB.Exec("UPDATE posts SET title = ?, content = ?, theme = ? WHERE id = ?;", title, content, theme, id)
+	return err
+}
