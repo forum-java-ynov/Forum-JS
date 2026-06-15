@@ -38,6 +38,27 @@ function closeEditPopup() {
     if (popup) popup.style.display = "none";
 }
 
+function showEditPostForm(postId) {
+    const popup = document.getElementById("edit-post-pop");
+    const idInput = document.getElementById("edit-post-id");
+    const titleInput = document.getElementById("edit-post-title");
+    const contentArea = document.getElementById("edit-post-content");
+
+    const currentTitle = document.getElementById("post-title-" + postId);
+    const currentContent = document.getElementById("post-content-" + postId);
+
+    if (idInput) idInput.value = postId;
+    if (titleInput && currentTitle) titleInput.value = currentTitle.innerText;
+    if (contentArea && currentContent) contentArea.value = currentContent.innerText;
+
+    if (popup) popup.style.display = "flex";
+}
+
+function closeEditPostPopup() {
+    const popup = document.getElementById("edit-post-pop");
+    if (popup) popup.style.display = "none";
+}
+
 function filterPosts() {
     const select = document.getElementById("filter-theme-select");
     if (!select) return;
@@ -55,7 +76,7 @@ function resetFilter() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    const actionForms = document.querySelectorAll('form[action^="/db/toggle_like"], form[action^="/db/toggle_dislike"], form[action^="/db/toggle_comment_like"], form[action^="/db/toggle_comment_dislike"], form[action^="/db/delete_post"]');
+    const actionForms = document.querySelectorAll('form[action^="/db/toggle_like"], form[action^="/db/toggle_dislike"], form[action^="/db/toggle_comment_like"], form[action^="/db/toggle_comment_dislike"], form[action^="/db/delete_post"], form[action*="edit"]');
 
     actionForms.forEach(form => {
         form.addEventListener('submit', async (event) => {
@@ -75,9 +96,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 if (response.ok) {
                     location.reload();
+                } else {
+                    console.error("Erreur HTTP:", response.status);
+                    alert("Erreur lors de la modification. Le serveur a renvoyé le code : " + response.status + "\n\nAvez-vous bien ajouté la route /api/edit-post dans votre code Go ?");
                 }
             } catch (error) {
                 console.error("Erreur de réseau :", error);
+                alert("Erreur de réseau. Le serveur Go est-il bien lancé ?");
             }
         });
     });

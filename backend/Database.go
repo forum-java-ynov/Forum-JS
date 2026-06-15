@@ -331,6 +331,13 @@ func editComment(commentID int, content string, userID int) error {
 	return err
 }
 
+func editPostWithImage(id int, title, content, theme, imagePath string) error {
+	_, err := DB.Exec("UPDATE posts SET title = ?, content = ?, theme = ?, image_path = ? WHERE id = ?;", title, content, theme, imagePath, id)
+	return err
+}
+
+func editPostWithoutImage(id int, title, content, theme string) error {
+	_, err := DB.Exec("UPDATE posts SET title = ?, content = ?, theme = ? WHERE id = ?;", title, content, theme, id)
 // github auth
 func updateGitHubID(email, githubID string) error {
 	_, err := DB.Exec(

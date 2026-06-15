@@ -523,7 +523,8 @@ button, .btn, input[type="submit"], input[type="button"] {
 
 #postForm,
 #commenteForm,
-#editCommenteForm {
+#editCommenteForm,
+#editPostForm {
     display: flex;
     flex-direction: column;
     gap: 14px;
@@ -531,7 +532,8 @@ button, .btn, input[type="submit"], input[type="button"] {
 
 #postForm label,
 #commenteForm label,
-#editCommenteForm label {
+#editCommenteForm label,
+#editPostForm label {
     font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -541,6 +543,9 @@ button, .btn, input[type="submit"], input[type="button"] {
 #postForm input[type="text"],
 #postForm textarea,
 #postForm select,
+#editPostForm input[type="text"],
+#editPostForm textarea,
+#editPostForm select,
 #commenteForm textarea,
 #editCommenteForm textarea {
     width: 100%;
@@ -557,11 +562,13 @@ button, .btn, input[type="submit"], input[type="button"] {
 
 #postForm textarea,
 #commenteForm textarea,
-#editCommenteForm textarea {
+#editCommenteForm textarea,
+#editPostForm textarea {
     resize: vertical;
 }
 
-#postForm input[type="file"] {
+#postForm input[type="file"],
+#editPostForm input[type="file"] {
     width: 100%;
     padding: 12px 16px;
     border: 1px solid var(--color-border);
@@ -588,6 +595,9 @@ button, .btn, input[type="submit"], input[type="button"] {
 #postForm input:focus,
 #postForm textarea:focus,
 #postForm select:focus,
+#editPostForm input:focus,
+#editPostForm textarea:focus,
+#editPostForm select:focus,
 #commenteForm textarea:focus,
 #editCommenteForm textarea:focus {
     border-color: rgba(41, 151, 255, 0.55);
@@ -596,13 +606,16 @@ button, .btn, input[type="submit"], input[type="button"] {
 
 #postForm input::placeholder,
 #postForm textarea::placeholder,
+#editPostForm input::placeholder,
+#editPostForm textarea::placeholder,
 #commenteForm textarea::placeholder,
 #editCommenteForm textarea::placeholder {
     color: rgba(255, 255, 255, 0.24);
 }
 
 .posts,
-.create-commente-pop {
+.create-commente-pop,
+#edit-post-pop {
     display: none;
     position: fixed;
     inset: 0;
@@ -616,7 +629,8 @@ button, .btn, input[type="submit"], input[type="button"] {
 }
 
 .posts.visible,
-.create-commente-pop.visible {
+.create-commente-pop.visible,
+#edit-post-pop.visible {
     display: flex;
 }
 
