@@ -66,14 +66,14 @@ func createTables() {
 		PRIMARY KEY (user_id)
 		);`,
 		`CREATE TABLE IF NOT EXISTS users (
-    		role TEXT NOT NULL DEFAULT 'user'
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			full_name TEXT NOT NULL,
 			username TEXT NOT NULL UNIQUE,
 			email TEXT NOT NULL UNIQUE,
 			password TEXT,
 			google_id TEXT,
-			github_id TEXT
+			github_id TEXT,
+			role TEXT NOT NULL DEFAULT 'user'
 		);`,
 		`CREATE TABLE IF NOT EXISTS posts (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
