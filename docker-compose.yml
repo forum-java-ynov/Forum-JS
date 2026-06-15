@@ -1,5 +1,6 @@
 services:
   forum:
+    container_name: forum-js
     build: . # Build l'image
     restart: unless-stopped
     ports:

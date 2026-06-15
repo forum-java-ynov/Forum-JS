@@ -37,6 +37,7 @@ EXPOSE 8082
 # Active le mode production
 ENV ENV=production
 
+# Verifie si le site fonctionne bien
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD wget --spider -q  http://localhost:8082 || exit 1
 
