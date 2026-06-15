@@ -137,6 +137,10 @@ func Server() {
 		httpError(w, http.StatusNotFound)
 	})
 
+	//auth github
+	http.HandleFunc("/auth/github/login", handleGitHubLogin)
+	http.HandleFunc("/auth/github/callback", handleGitHubCallback)
+
 	// auth google
 	http.HandleFunc("/auth/logout", handleLogout)
 	http.HandleFunc("/api/me", isAuthenticated(handleMe))
