@@ -118,6 +118,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func Server() {
+	go cleanupVisitors()
 	InitDB()
 
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("frontend/js"))))
@@ -154,8 +155,8 @@ func Server() {
 	})
 
 	// Routes DataBase
-	http.HandleFunc("/db/register", register)
-	http.HandleFunc("/db/login", login)
+	http.HandleFunc("/db/register", rateLimiter(register, 5, time.Minute))
+	http.HandleFunc("/db/login", rateLimiter(login, 5, time.Minute))
 	http.HandleFunc("/db/create_post", isAuthenticated(createPostHandler))
 	http.HandleFunc("/db/posts", showPostsHandler)
 	http.HandleFunc("/db/delete_post", isAuthenticated(deletePostHandler))
