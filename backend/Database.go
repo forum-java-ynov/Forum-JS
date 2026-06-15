@@ -59,6 +59,12 @@ func InitDB() {
 
 func createTables() {
 	queries := []string{
+		`CREATE TABLE IF NOT EXISTS user_sessions (
+		user_id INTEGER NOT NULL,
+		session_token TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		PRIMARY KEY (user_id)
+		);`,
 		`CREATE TABLE IF NOT EXISTS users (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			full_name TEXT NOT NULL,

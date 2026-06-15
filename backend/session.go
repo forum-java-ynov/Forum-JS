@@ -16,7 +16,33 @@ func init() {
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
+		MaxAge:   42400, // ~12h (in seconds)
 	}
+}
+
+func setUserSession(userID int, sessionToken string) error {
+	_, err := DB.Exec(`
+        INSERT INTO user_sessions (user_id, session_token)
+        VALUES (?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET session_token = ?, created_at = CURRENT_TIMESTAMP
+    `, userID, sessionToken, sessionToken)
+	return err
+}
+
+func isSessionValid(userID int, sessionToken string) (bool, error) {
+	var token string
+	err := DB.QueryRow(
+		"SELECT session_token FROM user_sessions WHERE user_id = ?", userID,
+	).Scan(&token)
+	if err != nil {
+		return false, err
+	}
+	return token == sessionToken, nil
+}
+
+func deleteUserSession(userID int) error {
+	_, err := DB.Exec("DELETE FROM user_sessions WHERE user_id = ?", userID)
+	return err
 }
 
 func getSession(w http.ResponseWriter, r *http.Request) (*sessions.Session, error) {
@@ -39,6 +65,13 @@ func getCurrentUserID(w http.ResponseWriter, r *http.Request) (int, error) {
 	if !ok || id == 0 {
 		return 0, errNotAuthenticated
 	}
+
+	token, _ := session.Values["session_token"].(string)
+	valid, err := isSessionValid(id, token)
+	if err != nil || !valid {
+		return 0, errNotAuthenticated
+	}
+
 	return id, nil
 }
 
