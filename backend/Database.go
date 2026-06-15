@@ -61,7 +61,8 @@ func createTables() {
 			username TEXT NOT NULL UNIQUE,
 			email TEXT NOT NULL UNIQUE,
 			password TEXT,
-			google_id TEXT
+			google_id TEXT,
+			github_id TEXT
 		);`,
 		`CREATE TABLE IF NOT EXISTS posts (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -337,5 +338,19 @@ func editPostWithImage(id int, title, content, theme, imagePath string) error {
 
 func editPostWithoutImage(id int, title, content, theme string) error {
 	_, err := DB.Exec("UPDATE posts SET title = ?, content = ?, theme = ? WHERE id = ?;", title, content, theme, id)
+// github auth
+func updateGitHubID(email, githubID string) error {
+	_, err := DB.Exec(
+		"UPDATE users SET github_id = ? WHERE email = ? AND (github_id IS NULL OR github_id = '');",
+		githubID, email,
+	)
+	return err
+}
+
+func insertGitHubUser(name, email, githubID string) error {
+	_, err := DB.Exec(
+		"INSERT INTO users (full_name, username, email, github_id) VALUES (?, ?, ?, ?)",
+		name, name, email, githubID,
+	)
 	return err
 }

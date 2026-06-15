@@ -84,15 +84,25 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+
 	var posts []Post
 	var err error
 
 	themeFilter := r.URL.Query().Get("theme")
-	if themeFilter != "" {
-		posts, err = filterPostsByTheme(themeFilter)
-	} else {
-		posts, err = getPosts()
+	likeFilter := r.URL.Query().Get("post_liked")
+	myPostsFilter := r.URL.Query().Get("hispost")
+
+	var userID int
+	if likeFilter != "" || myPostsFilter != "" {
+		userID, err = getCurrentUserID(w, r)
+		if err != nil || userID == 0 {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
 	}
+
+	posts, err = getFilteredPosts(themeFilter, userID, likeFilter != "", myPostsFilter != "")
 
 	if err != nil {
 		log.Println("Erreur lors de la récupération des posts:", err)
@@ -118,6 +128,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func Server() {
+	go cleanupVisitors()
 	InitDB()
 
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("frontend/js"))))
@@ -135,6 +146,10 @@ func Server() {
 	http.HandleFunc("/404", func(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusNotFound)
 	})
+
+	//auth github
+	http.HandleFunc("/auth/github/login", handleGitHubLogin)
+	http.HandleFunc("/auth/github/callback", handleGitHubCallback)
 
 	// auth google
 	http.HandleFunc("/auth/logout", handleLogout)
@@ -154,8 +169,8 @@ func Server() {
 	})
 
 	// Routes DataBase
-	http.HandleFunc("/db/register", register)
-	http.HandleFunc("/db/login", login)
+	http.HandleFunc("/db/register", rateLimiter(register, 5, time.Minute))
+	http.HandleFunc("/db/login", rateLimiter(login, 5, time.Minute))
 	http.HandleFunc("/db/create_post", isAuthenticated(createPostHandler))
 	http.HandleFunc("/db/posts", showPostsHandler)
 	http.HandleFunc("/db/delete_post", isAuthenticated(deletePostHandler))
@@ -170,6 +185,9 @@ func Server() {
 	http.HandleFunc("/db/toggle_dislike", isAuthenticated(ToggleDislikeHandler))
 	http.HandleFunc("/db/toggle_comment_like", isAuthenticated(ToggleCommentLikeHandler))
 	http.HandleFunc("/db/toggle_comment_dislike", isAuthenticated(ToggleCommentDislikeHandler))
+	
+	fmt.Println("http://localhost:8082")
+	http.ListenAndServe(":8082", nil)
 
 	//shutdown server
 	srv := &http.Server{Addr: ":8082"}

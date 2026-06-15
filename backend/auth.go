@@ -13,6 +13,8 @@ import (
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+
+	"golang.org/x/oauth2/github"
 )
 
 type LoginData struct {
@@ -35,6 +37,7 @@ type User struct {
 	Email    string
 }
 
+// google
 type GoogleUserInfo struct {
 	ID      string `json:"id"`
 	Email   string `json:"email"`
@@ -48,6 +51,30 @@ var googleOauthConfig = &oauth2.Config{
 	RedirectURL:  os.Getenv("GOOGLE_REDIRECT_URL"),
 	Scopes:       []string{"openid", "email", "profile"},
 	Endpoint:     google.Endpoint,
+}
+
+//github
+
+type GitHubUserInfo struct {
+	ID        int    `json:"id"`
+	Login     string `json:"login"` // Nom d'utilisateur GitHub
+	Name      string `json:"name"`  // Nom complet
+	Email     string `json:"email"`
+	AvatarURL string `json:"avatar_url"`
+}
+
+type GitHubEmail struct {
+	Email    string `json:"email"`
+	Primary  bool   `json:"primary"`
+	Verified bool   `json:"verified"`
+}
+
+var githubOauthConfig = &oauth2.Config{
+	ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
+	ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
+	RedirectURL:  os.Getenv("GITHUB_REDIRECT_URL"),
+	Scopes:       []string{"read:user", "user:email"},
+	Endpoint:     github.Endpoint,
 }
 
 func generateStateToken() (string, error) {
@@ -362,4 +389,145 @@ func decodeRequest(r *http.Request, target any) error {
 	}
 
 	return nil
+}
+
+// github
+func handleGitHubLogin(w http.ResponseWriter, r *http.Request) {
+	clientId := os.Getenv("GITHUB_CLIENT_ID")
+	if clientId == "" {
+		log.Println("❌ ERREUR CRITIQUE : GITHUB_CLIENT_ID est vide ! Vérifie tes variables d'environnement.")
+		serverError(w)
+		return
+	}
+
+	state, err := generateStateToken()
+	if err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
+	session, err := getSession(w, r)
+	if err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+	session.Values["oauth_state"] = state
+	if err := session.Save(r, w); err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
+	http.Redirect(w, r, githubOauthConfig.AuthCodeURL(state), http.StatusTemporaryRedirect)
+}
+
+func handleGitHubCallback(w http.ResponseWriter, r *http.Request) {
+	session, err := getSession(w, r)
+	if err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
+	expectedState, _ := session.Values["oauth_state"].(string)
+	if expectedState == "" || r.FormValue("state") != expectedState {
+		httpError(w, http.StatusBadRequest)
+		return
+	}
+
+	token, err := githubOauthConfig.Exchange(context.Background(), r.FormValue("code"))
+	if err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
+	userInfo, err := fetchGitHubUserInfo(token)
+	if err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
+	if err := loginOrRegisterGitHubUser(userInfo); err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
+	user, err := getUserByEmail(userInfo.Email)
+	if err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
+	delete(session.Values, "oauth_state")
+	session.Values["user_id"] = user.ID
+	session.Values["user_email"] = user.Email
+	session.Values["user_name"] = userInfo.Name
+	session.Values["user_picture"] = userInfo.AvatarURL
+
+	if err := session.Save(r, w); err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func fetchGitHubUserInfo(token *oauth2.Token) (*GitHubUserInfo, error) {
+	client := githubOauthConfig.Client(context.Background(), token)
+
+	resp, err := client.Get("https://api.github.com/user")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var userInfo GitHubUserInfo
+	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
+		return nil, err
+	}
+
+	if userInfo.Email == "" {
+		emailResp, err := client.Get("https://api.github.com/user/emails")
+		if err == nil {
+			defer emailResp.Body.Close()
+			var emails []GitHubEmail
+			if err := json.NewDecoder(emailResp.Body).Decode(&emails); err == nil {
+				for _, e := range emails {
+					if e.Primary {
+						userInfo.Email = e.Email
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// if no name, use username
+	if userInfo.Name == "" {
+		userInfo.Name = userInfo.Login
+	}
+
+	return &userInfo, nil
+}
+
+func loginOrRegisterGitHubUser(userInfo *GitHubUserInfo) error {
+	exists, err := userExistsByEmail(userInfo.Email)
+	if err != nil {
+		return err
+	}
+
+	githubIDStr := fmt.Sprintf("%d", userInfo.ID)
+
+	if !exists {
+		return insertGitHubUser(userInfo.Name, userInfo.Email, githubIDStr)
+	}
+
+	return updateGitHubID(userInfo.Email, githubIDStr)
 }

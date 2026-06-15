@@ -106,11 +106,4 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     });
-    const urlParams = new URLSearchParams(window.location.search);
-    const activeTheme = urlParams.get('theme');
-    const filterBtn = document.getElementById("filter-btn");
-    if (activeTheme && filterBtn) {
-        filterBtn.textContent = "Reset Filter";
-        filterBtn.onclick = resetFilter;
-    }
 });
