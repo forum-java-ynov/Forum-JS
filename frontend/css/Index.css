@@ -372,7 +372,9 @@ button, .btn, input[type="submit"], input[type="button"] {
     border-color: rgba(41, 151, 255, 0.55);
 }
 
-.filter-bar select option {
+.filter-bar select option,
+#postForm select option,
+#editPostForm select option {
     background: var(--color-surface-2);
     color: white;
 }
@@ -585,11 +587,6 @@ button, .btn, input[type="submit"], input[type="button"] {
     appearance: none;
     -webkit-appearance: none;
     cursor: pointer;
-}
-
-#postForm select option {
-    background: var(--color-surface-2);
-    color: white;
 }
 
 #postForm input:focus,
