@@ -49,7 +49,9 @@ func showCommentsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comments, err := getComments(postID)
+	currentUserID, _ := getCurrentUserID(w, r)
+
+	comments, err := getComments(postID, currentUserID)
 	if err != nil {
 		log.Println(err)
 		serverError(w)

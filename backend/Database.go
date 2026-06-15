@@ -16,23 +16,27 @@ var dbPath = "database/database.db"
 var DB *sql.DB
 
 type Comment struct {
-	ID       int
-	Username string
-	Content  string
-	Likes    int
-	Dislikes int
+	ID           int
+	Username     string
+	Content      string
+	Likes        int
+	Dislikes     int
+	UserLiked    bool
+	UserDisliked bool
 }
 
 type Post struct {
-	ID        int
-	Title     string
-	Content   string
-	ImagePath string
-	Theme     string
-	Username  string
-	Likes     int
-	Dislikes  int
-	Comments  []Comment
+	ID           int
+	Title        string
+	Content      string
+	ImagePath    string
+	Theme        string
+	Username     string
+	Likes        int
+	Dislikes     int
+	UserLiked    bool
+	UserDisliked bool
+	Comments     []Comment
 }
 
 // InitDB int sqlite connectionand create necesarry tables
@@ -177,7 +181,7 @@ func addPost(title, content, imagePath, theme string, userID int) error {
 	return err
 }
 
-func getPosts() ([]Post, error) {
+func getPosts(currentUserID int) ([]Post, error) {
 	rows, err := DB.Query(`
 		SELECT 
 			posts.id,
@@ -187,13 +191,15 @@ func getPosts() ([]Post, error) {
 			posts.theme,
 			COALESCE(users.full_name, users.username, 'Utilisateur'),
 			COUNT(DISTINCT post_like.id) as likes,
-			COUNT(DISTINCT post_dislike.id) as dislikes
+			COUNT(DISTINCT post_dislike.id) as dislikes,
+			EXISTS(SELECT 1 FROM post_like ul WHERE ul.post_id = posts.id AND ul.user_id = ?) as user_liked,
+			EXISTS(SELECT 1 FROM post_dislike ud WHERE ud.post_id = posts.id AND ud.user_id = ?) as user_disliked
 		FROM posts
 		LEFT JOIN post_like ON posts.id = post_like.post_id
 		LEFT JOIN post_dislike ON posts.id = post_dislike.post_id
 		LEFT JOIN users ON posts.user_id = users.id
 		GROUP BY posts.id;
-	`)
+	`, currentUserID, currentUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -202,21 +208,24 @@ func getPosts() ([]Post, error) {
 	var posts []Post
 	for rows.Next() {
 		var id, likes, dislikes int
+		var userLiked, userDisliked bool
 		var title, content, theme, username string
 		var imagePath sql.NullString
 
-		if err := rows.Scan(&id, &title, &content, &imagePath, &theme, &username, &likes, &dislikes); err != nil {
+		if err := rows.Scan(&id, &title, &content, &imagePath, &theme, &username, &likes, &dislikes, &userLiked, &userDisliked); err != nil {
 			return nil, err
 		}
 
 		post := Post{
-			ID:       id,
-			Title:    title,
-			Content:  content,
-			Theme:    theme,
-			Username: username,
-			Likes:    likes,
-			Dislikes: dislikes,
+			ID:           id,
+			Title:        title,
+			Content:      content,
+			Theme:        theme,
+			Username:     username,
+			Likes:        likes,
+			Dislikes:     dislikes,
+			UserLiked:    userLiked,
+			UserDisliked: userDisliked,
 		}
 		if imagePath.Valid {
 			post.ImagePath = imagePath.String
@@ -234,23 +243,25 @@ func addComment(postID int, userID int, content string) error {
 	return err
 }
 
-func getComments(postID int) ([]Comment, error) {
+func getComments(postID int, currentUserID int) ([]Comment, error) {
 	query := `
-		SELECT 
-			comments.id, 
-			COALESCE(users.username, 'Anonyme') as username, 
-			comments.content,
-			COUNT(DISTINCT comment_like.id) as likes,
-			COUNT(DISTINCT comment_dislike.id) as dislikes
-		FROM comments
-		LEFT JOIN users ON comments.user_id = users.id
-		LEFT JOIN comment_like ON comments.id = comment_like.comments_id
-		LEFT JOIN comment_dislike ON comments.id = comment_dislike.comments_id
-		WHERE comments.post_id = ?
-		GROUP BY comments.id;
-	`
+   SELECT 
+      comments.id, 
+      COALESCE(users.username, 'Anonyme') as username, 
+      comments.content,
+      COUNT(DISTINCT comment_like.id) as likes,
+      COUNT(DISTINCT comment_dislike.id) as dislikes,
+      MAX(CASE WHEN comment_like.user_id = ? THEN 1 ELSE 0 END) as user_liked,
+      MAX(CASE WHEN comment_dislike.user_id = ? THEN 1 ELSE 0 END) as user_disliked
+   FROM comments
+   LEFT JOIN users ON comments.user_id = users.id
+   LEFT JOIN comment_like ON comments.id = comment_like.comments_id
+   LEFT JOIN comment_dislike ON comments.id = comment_dislike.comments_id
+   WHERE comments.post_id = ?
+   GROUP BY comments.id;
+`
 
-	rows, err := DB.Query(query, postID)
+	rows, err := DB.Query(query, currentUserID, currentUserID, postID)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +270,7 @@ func getComments(postID int) ([]Comment, error) {
 	var comments []Comment
 	for rows.Next() {
 		var c Comment
-		if err := rows.Scan(&c.ID, &c.Username, &c.Content, &c.Likes, &c.Dislikes); err != nil {
+		if err := rows.Scan(&c.ID, &c.Username, &c.Content, &c.Likes, &c.Dislikes, &c.UserLiked, &c.UserDisliked); err != nil {
 			return nil, err
 		}
 		comments = append(comments, c)

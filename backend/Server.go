@@ -86,6 +86,8 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 
+	currentUserID, _ := getCurrentUserID(w, r)
+
 	var posts []Post
 	var err error
 
@@ -102,7 +104,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	posts, err = getFilteredPosts(themeFilter, userID, likeFilter != "", myPostsFilter != "")
+	posts, err = getFilteredPosts(themeFilter, currentUserID, likeFilter != "", myPostsFilter != "")
 
 	if err != nil {
 		log.Println("Erreur lors de la récupération des posts:", err)
@@ -111,7 +113,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for i := range posts {
-		comments, err := getComments(posts[i].ID)
+		comments, err := getComments(posts[i].ID, currentUserID)
 		if err != nil {
 			log.Println("Erreur lors de la récupération des commentaires:", err)
 			serverError(w)
@@ -121,6 +123,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := IndexData{Posts: posts}
+
 	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
 		log.Println("Erreur template:", err)
 		return
@@ -185,7 +188,7 @@ func Server() {
 	http.HandleFunc("/db/toggle_dislike", isAuthenticated(ToggleDislikeHandler))
 	http.HandleFunc("/db/toggle_comment_like", isAuthenticated(ToggleCommentLikeHandler))
 	http.HandleFunc("/db/toggle_comment_dislike", isAuthenticated(ToggleCommentDislikeHandler))
-	
+
 	fmt.Println("http://localhost:8082")
 	http.ListenAndServe(":8082", nil)
 
