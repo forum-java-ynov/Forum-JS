@@ -66,6 +66,7 @@ func createTables() {
 		PRIMARY KEY (user_id)
 		);`,
 		`CREATE TABLE IF NOT EXISTS users (
+    		role TEXT NOT NULL DEFAULT 'user'
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			full_name TEXT NOT NULL,
 			username TEXT NOT NULL UNIQUE,
@@ -148,10 +149,15 @@ func insertUser(fullName, username, email, password, verifPassword string) error
 		return err
 	}
 
+	role := "user"
+	if username == "admin" {
+		role = "admin"
+	}
+
 	_, err = DB.Exec(`
-		INSERT INTO users (full_name, username, email, password) 
-		VALUES (?, ?, ?, ?);
-	`, fullName, username, email, hpassword)
+        INSERT INTO users (full_name, username, email, password, role) 
+        VALUES (?, ?, ?, ?, ?);
+    `, fullName, username, email, hpassword, role)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "users.email") {
@@ -373,4 +379,13 @@ func insertGitHubUser(name, email, githubID string) error {
 		name, name, email, githubID,
 	)
 	return err
+}
+
+func getUserRole(userID int) (bool, error) {
+	var role string
+	err := DB.QueryRow("SELECT role FROM users WHERE id = ?", userID).Scan(&role)
+	if err != nil {
+		return false, err
+	}
+	return role == "admin", nil
 }
