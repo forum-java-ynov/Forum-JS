@@ -84,6 +84,8 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	currentUserID, _ := getCurrentUserID(w, r)
+
 	var posts []Post
 	var err error
 
@@ -91,7 +93,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 	if themeFilter != "" {
 		posts, err = filterPostsByTheme(themeFilter)
 	} else {
-		posts, err = getPosts()
+		posts, err = getPosts(currentUserID)
 	}
 
 	if err != nil {
@@ -101,7 +103,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for i := range posts {
-		comments, err := getComments(posts[i].ID)
+		comments, err := getComments(posts[i].ID, currentUserID)
 		if err != nil {
 			log.Println("Erreur lors de la récupération des commentaires:", err)
 			serverError(w)
@@ -137,17 +139,14 @@ func Server() {
 		httpError(w, http.StatusNotFound)
 	})
 
-	//auth github
 	http.HandleFunc("/auth/github/login", handleGitHubLogin)
 	http.HandleFunc("/auth/github/callback", handleGitHubCallback)
 
-	// auth google
 	http.HandleFunc("/auth/logout", handleLogout)
 	http.HandleFunc("/api/me", isAuthenticated(handleMe))
 	http.HandleFunc("/auth/google/login", handleGoogleLogin)
 	http.HandleFunc("/auth/google/callback", handleGoogleCallback)
 
-	// error tests
 	http.HandleFunc("/test500", func(w http.ResponseWriter, r *http.Request) {
 		serverError(w)
 	})
@@ -158,7 +157,6 @@ func Server() {
 		httpError(w, http.StatusUnauthorized)
 	})
 
-	// Routes DataBase
 	http.HandleFunc("/db/register", rateLimiter(register, 5, time.Minute))
 	http.HandleFunc("/db/login", rateLimiter(login, 5, time.Minute))
 	http.HandleFunc("/db/create_post", isAuthenticated(createPostHandler))
@@ -175,7 +173,6 @@ func Server() {
 	http.HandleFunc("/db/toggle_comment_like", isAuthenticated(ToggleCommentLikeHandler))
 	http.HandleFunc("/db/toggle_comment_dislike", isAuthenticated(ToggleCommentDislikeHandler))
 
-	//shutdown server
 	srv := &http.Server{Addr: ":8082"}
 
 	go func() {
@@ -191,7 +188,6 @@ func Server() {
 
 	fmt.Println("\nShutting down server...")
 
-	// closing db
 	if DB != nil {
 		DB.Close()
 	}

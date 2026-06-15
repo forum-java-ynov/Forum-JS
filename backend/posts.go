@@ -101,7 +101,9 @@ func createPostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func showPostsHandler(w http.ResponseWriter, r *http.Request) {
-	posts, err := getPosts()
+	currentUserID, _ := getCurrentUserID(w, r)
+
+	posts, err := getPosts(currentUserID)
 	if err != nil {
 		log.Println(err)
 		serverError(w)
