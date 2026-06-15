@@ -143,8 +143,9 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ownerID != sessionUserID {
-		httpError(w, http.StatusUnauthorized)
+	isAdmin, _ := getUserRole(sessionUserID)
+	if ownerID != sessionUserID && !isAdmin {
+		httpError(w, http.StatusForbidden)
 		return
 	}
 
@@ -194,7 +195,8 @@ func deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ownerID != userID {
+	isAdmin, _ := getUserRole(userID)
+	if ownerID != userID && !isAdmin {
 		httpError(w, http.StatusForbidden)
 		return
 	}
