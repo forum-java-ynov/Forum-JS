@@ -42,10 +42,11 @@
                             <label for="imageInput">Upload an image:</label>
                             <input type="file" id="image_url" name="image"><br><br>
 
-                            <div style="border:1px solid #ccc; padding:15px; border-radius:10px; width:300px;">
-                                <h3>Choose a theme</h3>
+                            <div style="width:100%;">
                                 <label for="theme">theme :</label>
-                                <select id="theme" name="theme" style="width:100%; padding:8px; margin-top:8px;">
+                                <select id="theme" name="theme">
+                                    <option value="">Select a theme</option>
+                                    <option value="others">Others</option>
                                     <option value="tech">Technology</option>
                                     <option value="sport">Sports</option>
                                     <option value="gaming">Gaming</option>
@@ -200,10 +201,11 @@
                                     <label for="edit-post-image">Change image (optional):</label>
                                     <input type="file" id="edit-post-image" name="image" accept=".jpg,.jpeg,.png,.gif,.webp"><br><br>
 
-                                    <div style="border:1px solid #ccc; padding:15px; border-radius:10px; width:300px;">
-                                        <h3>Choose a theme</h3>
+                                    <div style="width:100%;">
                                         <label for="edit-post-theme">Theme:</label>
-                                        <select id="edit-post-theme" name="theme" style="width:100%; padding:8px; margin-top:8px;" required>
+                                        <select id="edit-post-theme" name="theme" required>
+                                            <option value="">Select a theme</option>
+                                            <option value="others">Others</option>
                                             <option value="tech">Technology</option>
                                             <option value="sport">Sports</option>
                                             <option value="gaming">Gaming</option>

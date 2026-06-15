@@ -16,6 +16,7 @@ func init() {
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
+		MaxAge:   86400 * 1,// 1 day
 	}
 }
 

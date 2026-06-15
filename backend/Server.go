@@ -185,11 +185,7 @@ func Server() {
 	http.HandleFunc("/db/toggle_dislike", isAuthenticated(ToggleDislikeHandler))
 	http.HandleFunc("/db/toggle_comment_like", isAuthenticated(ToggleCommentLikeHandler))
 	http.HandleFunc("/db/toggle_comment_dislike", isAuthenticated(ToggleCommentDislikeHandler))
-	
-	fmt.Println("http://localhost:8082")
-	http.ListenAndServe(":8082", nil)
 
-	//shutdown server
 	srv := &http.Server{Addr: ":8082"}
 
 	go func() {
@@ -205,7 +201,6 @@ func Server() {
 
 	fmt.Println("\nShutting down server...")
 
-	// closing db
 	if DB != nil {
 		DB.Close()
 	}
