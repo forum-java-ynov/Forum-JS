@@ -338,6 +338,9 @@ func editPostWithImage(id int, title, content, theme, imagePath string) error {
 
 func editPostWithoutImage(id int, title, content, theme string) error {
 	_, err := DB.Exec("UPDATE posts SET title = ?, content = ?, theme = ? WHERE id = ?;", title, content, theme, id)
+	return err
+}
+
 // github auth
 func updateGitHubID(email, githubID string) error {
 	_, err := DB.Exec(

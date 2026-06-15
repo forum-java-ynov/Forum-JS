@@ -17,9 +17,11 @@ COPY . .
 # Compile le binaire Go pour Linux
 RUN CGO_ENABLED=0 GOOS=linux go build -o main .
 
-# ── Build ──
+# ── Production ──
 # Image légère sans les outils Go
 FROM alpine:latest
+
+RUN apk add --no-cache wget
 
 WORKDIR /app
 
@@ -34,6 +36,9 @@ EXPOSE 8082
 
 # Active le mode production
 ENV ENV=production
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD wget --spider -q  http://localhost:8082 || exit 1
 
 # Commande de démarrage
 ENTRYPOINT ["./main"]
