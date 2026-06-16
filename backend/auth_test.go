@@ -12,8 +12,9 @@ func TestLogin_MethodGet(t *testing.T) {
 	rr := httptest.NewRecorder()
 	login(rr, req)
 
-	if rr.Code != http.StatusMethodNotAllowed {
-		t.Errorf("attendu 405, reçu %d", rr.Code)
+	// login redirige maintenant au lieu de retourner 405
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("attendu 303, reçu %d", rr.Code)
 	}
 }
 
@@ -24,8 +25,13 @@ func TestLogin_ChampsVides(t *testing.T) {
 	rr := httptest.NewRecorder()
 	login(rr, req)
 
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("attendu 400, reçu %d", rr.Code)
+	// redirige vers /login?error=... au lieu de 400
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("attendu 303, reçu %d", rr.Code)
+	}
+	location := rr.Header().Get("Location")
+	if !strings.Contains(location, "error") {
+		t.Errorf("attendu redirection avec error, reçu : %s", location)
 	}
 }
 
@@ -39,8 +45,33 @@ func TestLogin_IdentifiantsInvalides(t *testing.T) {
 	rr := httptest.NewRecorder()
 	login(rr, req)
 
-	if rr.Code != http.StatusUnauthorized {
-		t.Errorf("attendu 401, reçu %d", rr.Code)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("attendu 303, reçu %d", rr.Code)
+	}
+	location := rr.Header().Get("Location")
+	if !strings.Contains(location, "error") {
+		t.Errorf("attendu redirection avec error, reçu : %s", location)
+	}
+}
+
+func TestLogin_Success(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	insertUser("John Doe", "testlogin", "testlogin@test.com", "Password123!", "Password123!")
+
+	body := strings.NewReader("username=testlogin&password=Password123!")
+	req := httptest.NewRequest("POST", "/db/login", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	login(rr, req)
+
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("attendu 303, reçu %d", rr.Code)
+	}
+	location := rr.Header().Get("Location")
+	if strings.Contains(location, "error") {
+		t.Errorf("ne devrait pas contenir error, reçu : %s", location)
 	}
 }
 
@@ -61,8 +92,12 @@ func TestRegister_ChampsVides(t *testing.T) {
 	rr := httptest.NewRecorder()
 	register(rr, req)
 
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("attendu 400, reçu %d", rr.Code)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("attendu 303, reçu %d", rr.Code)
+	}
+	location := rr.Header().Get("Location")
+	if !strings.Contains(location, "error") {
+		t.Errorf("attendu redirection avec error, reçu : %s", location)
 	}
 }
 
@@ -70,29 +105,37 @@ func TestRegister_PasswordMismatch(t *testing.T) {
 	cleanup := setupTestDB(t)
 	defer cleanup()
 
-	body := strings.NewReader("full_name=John&username=johndoe&email=john@test.com&password=abc&confirm_password=xyz")
+	body := strings.NewReader("full_name=John&username=johndoe&email=john@test.com&password=Password123!&confirm_password=Password456!")
 	req := httptest.NewRequest("POST", "/db/register", body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
 	register(rr, req)
 
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("attendu 400, reçu %d", rr.Code)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("attendu 303, reçu %d", rr.Code)
+	}
+	location := rr.Header().Get("Location")
+	if !strings.Contains(location, "error") {
+		t.Errorf("attendu redirection avec error, reçu : %s", location)
 	}
 }
 
-func TestRegister_JSON(t *testing.T) {
+func TestRegister_Success(t *testing.T) {
 	cleanup := setupTestDB(t)
 	defer cleanup()
 
-	body := strings.NewReader(`{"full_name":"Jane","username":"janedoe","email":"jane@test.com","password":"pass","confirm_password":"pass"}`)
+	body := strings.NewReader("full_name=Jane Doe&username=janedoe&email=jane@test.com&password=Password123!&confirm_password=Password123!")
 	req := httptest.NewRequest("POST", "/db/register", body)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
 	register(rr, req)
 
-	if rr.Code != http.StatusSeeOther && rr.Code != http.StatusBadRequest {
-		t.Errorf("code inattendu : %d", rr.Code)
+	if rr.Code != http.StatusSeeOther {
+		t.Errorf("attendu 303, reçu %d", rr.Code)
+	}
+	location := rr.Header().Get("Location")
+	if !strings.Contains(location, "success") {
+		t.Errorf("attendu redirection avec success, reçu : %s", location)
 	}
 }
 
