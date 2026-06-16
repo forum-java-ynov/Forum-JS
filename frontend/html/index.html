@@ -135,7 +135,7 @@
                                             {{ range .Comments }}
                                                 <div class="comment">
                                                     <strong>{{ .Username }}</strong>
-                                                    <p>{{ .Content }}</p>
+                                                    <p id="comment-content-{{ .ID }}">{{ .Content }}</p>
                                                     <div class="comment-reactions">
                                                         <form action="/db/toggle_comment_like?id={{ .ID }}" method="post">
                                                             <button class="reaction-pill reaction-like{{ if .UserLiked }} active{{ end }}">👍 <span id="comment-like-{{ .ID }}">{{ .Likes }}</span></button>
@@ -175,7 +175,7 @@
                     <div class="create-commente-pop" id="edit-comment-pop">
                         <div id="edit-commente-pop-up" class="popup-content">
                             <h2 id="edit-commente-popup-title">Edit a Comment</h2>
-                            <form id="editCommenteForm" action="/db/edit_comment" method="post">
+                            <form id="editCommenteForm" action="/db/edit-comment" method="post" enctype="multipart/form-data">
                                 <input type="hidden" id="edit-comment-id" name="comment_id">
                                 <label for="edit-content-commente">Content:</label><br>
                                 <textarea id="edit-content-commente" name="content" rows="4" cols="50"></textarea><br><br>

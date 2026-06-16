@@ -187,7 +187,7 @@ func Server() {
 
 	http.HandleFunc("/db/create_comment", isAuthenticated(createCommentHandler))
 	http.HandleFunc("/db/comments", showCommentsHandler)
-	http.HandleFunc("/db/edit_comment", isAuthenticated(editCommentHandler))
+	http.HandleFunc("/db/edit-comment", isAuthenticated(editCommentHandler))
 	http.HandleFunc("/db/delete_comment", isAuthenticated(deleteCommentHandler))
 
 	http.HandleFunc("/db/toggle_like", isAuthenticated(ToggleLikeHandler))

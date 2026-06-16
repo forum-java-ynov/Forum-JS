@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -63,7 +64,9 @@ func showCommentsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func editCommentHandler(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	// On utilise ParseMultipartForm car le formulaire HTML envoie des données de ce type.
+	// 10 << 20 correspond à une limite de 10MB.
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		httpError(w, http.StatusBadRequest)
 		return
 	}
@@ -83,6 +86,23 @@ func editCommentHandler(w http.ResponseWriter, r *http.Request) {
 	userID, err := getCurrentUserID(w, r)
 	if err != nil {
 		httpError(w, http.StatusUnauthorized)
+		return
+	}
+
+	// --- Vérification de sécurité ---
+	// On vérifie que l'utilisateur est bien le propriétaire du commentaire (ou un admin).
+	ownerID, err := getCommentOwnerID(commentID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			httpError(w, http.StatusNotFound) // Le commentaire n'existe pas.
+		} else {
+			serverError(w)
+		}
+		return
+	}
+	isAdmin, _ := getUserRole(userID)
+	if ownerID != userID && !isAdmin {
+		httpError(w, http.StatusForbidden) // L'utilisateur n'a pas les droits.
 		return
 	}
 

@@ -84,7 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
             
             const url = form.getAttribute('action');
             const formData = new FormData(form);
-            
+
             try {
                 const response = await fetch(url, {
                     method: 'POST',
