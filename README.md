@@ -131,7 +131,7 @@ Forum-JS/
 - Uploaded images are automatically resized to 800×800px max
 - Rate limiting: 5 requests/minute on `/db/login` and `/db/register`
 - The `database/` and `uploads/` folders are created automatically on first run
-- OAuth credentials must be set in the `.env` file (see `.env.example` if provided)
+- OAuth credentials must be set in the `.env` file (see `.env.example` )
 
 
 ## Lien 
