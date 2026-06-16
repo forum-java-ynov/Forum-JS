@@ -19,7 +19,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o main .
 
 # ── Production ──
 # Image légère sans les outils Go
-FROM alpine:latest
+FROM alpine:3.24
 
 RUN apk add --no-cache wget
 
