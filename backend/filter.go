@@ -5,10 +5,6 @@ import (
 	"strings"
 )
 
-// getFilteredPosts returns posts filtered by optional theme and/or liked-by-user criteria.
-// theme: filter by category, empty string = no theme filter
-// userID: if > 0 and likedOnly is true, only posts liked by this user are returned
-// hispost: if true, only posts created by this user are returned
 func getFilteredPosts(theme string, userID int, likedOnly bool, hispost bool) ([]Post, error) {
 	query := `
        SELECT 

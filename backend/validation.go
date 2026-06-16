@@ -6,89 +6,89 @@ import (
 	"strings"
 )
 
-// validateUsername vérifie que le nom d'utilisateur est valide
+// validateUsername checks that the username is valid
 func validateUsername(username string) error {
 	username = strings.TrimSpace(username)
 	if len(username) < 3 {
-		return fmt.Errorf("le nom d'utilisateur doit contenir au moins 3 caractères")
+		return fmt.Errorf("username must contain at least 3 characters")
 	}
 	if len(username) > 30 {
-		return fmt.Errorf("le nom d'utilisateur ne peut pas dépasser 30 caractères")
+		return fmt.Errorf("username cannot exceed 30 characters")
 	}
 	matched, _ := regexp.MatchString(`^[a-zA-Z0-9_]+$`, username)
 	if !matched {
-		return fmt.Errorf("le nom d'utilisateur ne peut contenir que des lettres, chiffres et underscores")
+		return fmt.Errorf("username can only contain letters, numbers and underscores")
 	}
 	return nil
 }
 
-// validateFullName vérifie que le nom complet est valide
+// validateFullName checks that the full name is valid
 func validateFullName(name string) error {
 	name = strings.TrimSpace(name)
 	if len(name) < 2 {
-		return fmt.Errorf("le nom complet doit contenir au moins 2 caractères")
+		return fmt.Errorf("full name must contain at least 2 characters")
 	}
 	if len(name) > 100 {
-		return fmt.Errorf("le nom complet ne peut pas dépasser 100 caractères")
+		return fmt.Errorf("full name cannot exceed 100 characters")
 	}
 	return nil
 }
 
-// validateEmail vérifie que l'adresse email est valide
+// validateEmail checks that the email address is valid
 func validateEmail(email string) error {
 	email = strings.TrimSpace(email)
 	if len(email) < 5 {
-		return fmt.Errorf("l'adresse email est trop courte")
+		return fmt.Errorf("email address is too short")
 	}
 	if len(email) > 254 {
-		return fmt.Errorf("l'adresse email ne peut pas dépasser 254 caractères")
+		return fmt.Errorf("email address cannot exceed 254 characters")
 	}
 	matched, _ := regexp.MatchString(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`, email)
 	if !matched {
-		return fmt.Errorf("l'adresse email n'est pas valide")
+		return fmt.Errorf("email address is not valid")
 	}
 	return nil
 }
 
-// validatePassword vérifie que le mot de passe est assez fort
+// validatePassword checks that the password is strong enough
 func validatePassword(password string) error {
 	if len(password) < 8 {
-		return fmt.Errorf("le mot de passe doit contenir au moins 8 caractères")
+		return fmt.Errorf("password must contain at least 8 characters")
 	}
 	if len(password) > 100 {
-		return fmt.Errorf("le mot de passe ne peut pas dépasser 100 caractères")
+		return fmt.Errorf("password cannot exceed 100 characters")
 	}
 	return nil
 }
 
-// validatePostTitle vérifie qu'un titre de post est valide
+// validatePostTitle checks that a post title is valid
 func validatePostTitle(title string) error {
 	title = strings.TrimSpace(title)
 	if len(title) == 0 {
-		return fmt.Errorf("le titre ne peut pas être vide")
+		return fmt.Errorf("title cannot be empty")
 	}
 	if len(title) > 200 {
-		return fmt.Errorf("le titre ne peut pas dépasser 200 caractères")
+		return fmt.Errorf("title cannot exceed 200 characters")
 	}
 	return nil
 }
 
-// validatePostContent vérifie qu'un contenu de post est valide
+// validatePostContent checks that a post's content is valid
 func validatePostContent(content string) error {
 	content = strings.TrimSpace(content)
 	if len(content) == 0 {
-		return nil // le contenu peut être vide
+		return nil // content can be empty
 	}
 	if len(content) > 10000 {
-		return fmt.Errorf("le contenu ne peut pas dépasser 10 000 caractères")
+		return fmt.Errorf("content cannot exceed 10,000 characters")
 	}
 	return nil
 }
 
-// validatePostTheme vérifie qu'un thème est valide
+// validatePostTheme checks that a theme is valid
 func validatePostTheme(theme string) error {
 	if theme == "" {
-		return nil // le thème est optionnel
+		return nil // theme is optional
 	}
 	validThemes := map[string]bool{
 		"tech":     true,
@@ -100,27 +100,27 @@ func validatePostTheme(theme string) error {
 		"others":   true,
 	}
 	if !validThemes[theme] {
-		return fmt.Errorf("le thème '%s' n'est pas valide", theme)
+		return fmt.Errorf("theme '%s' is not valid", theme)
 	}
 	return nil
 }
 
-// validateCommentContent vérifie qu'un commentaire est valide
+// validateCommentContent checks that a comment is valid
 func validateCommentContent(content string) error {
 	content = strings.TrimSpace(content)
 	if len(content) == 0 {
-		return fmt.Errorf("le commentaire ne peut pas être vide")
+		return fmt.Errorf("comment cannot be empty")
 	}
 	if len(content) > 5000 {
-		return fmt.Errorf("le commentaire ne peut pas dépasser 5 000 caractères")
+		return fmt.Errorf("comment cannot exceed 5,000 characters")
 	}
 	return nil
 }
 
-// validatePositiveID vérifie qu'un ID est un entier positif
+// validatePositiveID checks that an ID is a positive integer
 func validatePositiveID(id int) error {
 	if id <= 0 {
-		return fmt.Errorf("l'identifiant doit être un nombre positif")
+		return fmt.Errorf("ID must be a positive number")
 	}
 	return nil
 }
