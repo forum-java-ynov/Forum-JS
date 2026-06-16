@@ -1,5 +1,5 @@
 # ── Build ──
-# Image Go pour compiler le projet
+# Image Go compiler le projet
 FROM golang:1.25-alpine AS builder
 
 # Dossier de travail dans le conteneur
