@@ -117,7 +117,7 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 	for i, p := range posts {
 		postIDs[i] = p.ID
 	}
-	commentsByPost, err := getCommentsByPostIDs(postIDs)
+	commentsByPost, err := getCommentsByPostIDs(postIDs, currentUserID)
 	if err != nil {
 		log.Println("Erreur lors de la récupération des commentaires:", err)
 		serverError(w)

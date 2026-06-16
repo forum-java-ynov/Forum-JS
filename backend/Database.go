@@ -242,7 +242,7 @@ func getComments(postID int, currentUserID int) ([]Comment, error) {
 
 // getCommentsByPostIDs returns a map of postID -> []Comment for all given post IDs.
 // This solves the N+1 query problem by fetching all comments in a single query.
-func getCommentsByPostIDs(postIDs []int) (map[int][]Comment, error) {
+func getCommentsByPostIDs(postIDs []int, currentUserID int) (map[int][]Comment, error) {
 	if len(postIDs) == 0 {
 		return make(map[int][]Comment), nil
 	}
@@ -254,21 +254,21 @@ func getCommentsByPostIDs(postIDs []int) (map[int][]Comment, error) {
 			COALESCE(users.username, 'Anonyme') as username, 
 			comments.content,
 			COUNT(DISTINCT comment_like.id) as likes,
-			COUNT(DISTINCT comment_dislike.id) as dislikes
+			COUNT(DISTINCT comment_dislike.id) as dislikes,
+			MAX(CASE WHEN comment_like.user_id = ? THEN 1 ELSE 0 END) as user_liked,
+			MAX(CASE WHEN comment_dislike.user_id = ? THEN 1 ELSE 0 END) as user_disliked
 		FROM comments
 		LEFT JOIN users ON comments.user_id = users.id
 		LEFT JOIN comment_like ON comments.id = comment_like.comments_id
 		LEFT JOIN comment_dislike ON comments.id = comment_dislike.comments_id
 		WHERE comments.post_id IN (?`
-	
-	args := []interface{}{postIDs[0]}
+
+	args := []interface{}{currentUserID, currentUserID, postIDs[0]}
 	for i := 1; i < len(postIDs); i++ {
 		query += ", ?"
 		args = append(args, postIDs[i])
 	}
-	query += `)
-		GROUP BY comments.id;
-	`
+	query += `) GROUP BY comments.id;`
 
 	rows, err := DB.Query(query, args...)
 	if err != nil {
@@ -280,7 +280,7 @@ func getCommentsByPostIDs(postIDs []int) (map[int][]Comment, error) {
 	for rows.Next() {
 		var postID int
 		var c Comment
-		if err := rows.Scan(&postID, &c.ID, &c.Username, &c.Content, &c.Likes, &c.Dislikes); err != nil {
+		if err := rows.Scan(&postID, &c.ID, &c.Username, &c.Content, &c.Likes, &c.Dislikes, &c.UserLiked, &c.UserDisliked); err != nil {
 			return nil, err
 		}
 		commentsByPost[postID] = append(commentsByPost[postID], c)
