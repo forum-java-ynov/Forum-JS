@@ -49,8 +49,6 @@ func InitDB() {
 		log.Fatalf("La base de données ne répond pas: %v", err)
 	}
 
-	DB.Exec("PRAGMA foreign_keys = ON")
-
 	log.Println("Connecté à " + dbPath)
 	createTables()
 }
@@ -180,52 +178,7 @@ func addPost(title, content, imagePath, theme string, userID int) error {
 }
 
 func getPosts() ([]Post, error) {
-	rows, err := DB.Query(`
-		SELECT 
-			posts.id,
-			posts.title,
-			posts.content,
-			posts.image_path,
-			posts.theme,
-			COALESCE(users.full_name, users.username, 'Utilisateur'),
-			COUNT(DISTINCT post_like.id) as likes,
-			COUNT(DISTINCT post_dislike.id) as dislikes
-		FROM posts
-		LEFT JOIN post_like ON posts.id = post_like.post_id
-		LEFT JOIN post_dislike ON posts.id = post_dislike.post_id
-		LEFT JOIN users ON posts.user_id = users.id
-		GROUP BY posts.id;
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var posts []Post
-	for rows.Next() {
-		var id, likes, dislikes int
-		var title, content, theme, username string
-		var imagePath sql.NullString
-
-		if err := rows.Scan(&id, &title, &content, &imagePath, &theme, &username, &likes, &dislikes); err != nil {
-			return nil, err
-		}
-
-		post := Post{
-			ID:       id,
-			Title:    title,
-			Content:  content,
-			Theme:    theme,
-			Username: username,
-			Likes:    likes,
-			Dislikes: dislikes,
-		}
-		if imagePath.Valid {
-			post.ImagePath = imagePath.String
-		}
-		posts = append(posts, post)
-	}
-	return posts, nil
+	return getFilteredPosts("", 0, false, false)
 }
 
 func addComment(postID int, userID int, content string) error {
@@ -267,6 +220,54 @@ func getComments(postID int) ([]Comment, error) {
 		comments = append(comments, c)
 	}
 	return comments, nil
+}
+
+// getCommentsByPostIDs returns a map of postID -> []Comment for all given post IDs.
+// This solves the N+1 query problem by fetching all comments in a single query.
+func getCommentsByPostIDs(postIDs []int) (map[int][]Comment, error) {
+	if len(postIDs) == 0 {
+		return make(map[int][]Comment), nil
+	}
+
+	query := `
+		SELECT 
+			comments.post_id,
+			comments.id, 
+			COALESCE(users.username, 'Anonyme') as username, 
+			comments.content,
+			COUNT(DISTINCT comment_like.id) as likes,
+			COUNT(DISTINCT comment_dislike.id) as dislikes
+		FROM comments
+		LEFT JOIN users ON comments.user_id = users.id
+		LEFT JOIN comment_like ON comments.id = comment_like.comments_id
+		LEFT JOIN comment_dislike ON comments.id = comment_dislike.comments_id
+		WHERE comments.post_id IN (?`
+	
+	args := []interface{}{postIDs[0]}
+	for i := 1; i < len(postIDs); i++ {
+		query += ", ?"
+		args = append(args, postIDs[i])
+	}
+	query += `)
+		GROUP BY comments.id;
+	`
+
+	rows, err := DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	commentsByPost := make(map[int][]Comment)
+	for rows.Next() {
+		var postID int
+		var c Comment
+		if err := rows.Scan(&postID, &c.ID, &c.Username, &c.Content, &c.Likes, &c.Dislikes); err != nil {
+			return nil, err
+		}
+		commentsByPost[postID] = append(commentsByPost[postID], c)
+	}
+	return commentsByPost, nil
 }
 
 func deletePost(id int) error {
@@ -342,6 +343,7 @@ func editPostWithoutImage(id int, title, content, theme string) error {
 	_, err := DB.Exec("UPDATE posts SET title = ?, content = ?, theme = ? WHERE id = ?;", title, content, theme, id)
 	return err
 }
+
 // github auth
 func updateGitHubID(email, githubID string) error {
 	_, err := DB.Exec(

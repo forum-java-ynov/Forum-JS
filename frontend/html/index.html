@@ -9,6 +9,7 @@
     </head>
 
     <body>
+        <div class="toast-container" id="toast-container"></div>
         <nav>
             <ul>
                 <li id="nav-login"><a href="/login">Login</a></li>
@@ -196,10 +197,15 @@
                                     <input type="text" id="edit-post-title" name="title" required><br><br>
 
                                     <label for="edit-post-content">Content:</label><br>
-                                    <textarea id="edit-post-content" name="content" rows="4" cols="50" required></textarea><br><br>
+                                    <textarea id="edit-post-content" name="content" rows="4" cols="50"></textarea><br><br>
 
                                     <label for="edit-post-image">Change image (optional):</label>
                                     <input type="file" id="edit-post-image" name="image" accept=".jpg,.jpeg,.png,.gif,.webp"><br><br>
+
+                                    <label>
+                                        <input type="checkbox" id="edit-post-remove-image" name="remove_image" value="true">
+                                        Remove current image
+                                    </label><br><br>
 
                                     <div style="width:100%;">
                                         <label for="edit-post-theme">Theme:</label>
