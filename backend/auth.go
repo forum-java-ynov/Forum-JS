@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -116,20 +117,25 @@ func sessionDisplayName(values map[interface{}]interface{}) string {
 
 func login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		httpError(w, http.StatusMethodNotAllowed)
+		http.Redirect(w, r, "/login?error="+url.QueryEscape("Méthode non autorisée"), http.StatusSeeOther)
 		return
 	}
 
 	var credentials LoginData
 	if err := decodeRequest(r, &credentials); err != nil {
-		httpError(w, http.StatusBadRequest)
+		http.Redirect(w, r, "/login?error="+url.QueryEscape("Formulaire invalide"), http.StatusSeeOther)
 		return
 	}
 
 	credentials.Username = strings.TrimSpace(credentials.Username)
 
 	if credentials.Username == "" || credentials.Password == "" {
-		httpError(w, http.StatusBadRequest)
+		http.Redirect(w, r, "/login?error="+url.QueryEscape("Tous les champs sont obligatoires"), http.StatusSeeOther)
+		return
+	}
+
+	if err := validateUsername(credentials.Username); err != nil {
+		http.Redirect(w, r, "/login?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 
@@ -140,7 +146,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !ok {
-		httpError(w, http.StatusUnauthorized)
+		http.Redirect(w, r, "/login?error="+url.QueryEscape("Identifiants incorrects"), http.StatusSeeOther)
 		return
 	}
 
@@ -191,7 +197,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 
 	var formData RegisterData
 	if err := decodeRequest(r, &formData); err != nil {
-		httpError(w, http.StatusBadRequest)
+		http.Redirect(w, r, "/register?error="+url.QueryEscape("Formulaire invalide"), http.StatusSeeOther)
 		return
 	}
 
@@ -200,16 +206,33 @@ func register(w http.ResponseWriter, r *http.Request) {
 	formData.Email = strings.TrimSpace(formData.Email)
 
 	if formData.FullName == "" || formData.Username == "" || formData.Email == "" || formData.Password == "" || formData.ConfirmPassword == "" {
-		httpError(w, http.StatusBadRequest)
+		http.Redirect(w, r, "/register?error="+url.QueryEscape("Tous les champs sont obligatoires"), http.StatusSeeOther)
+		return
+	}
+
+	if err := validateFullName(formData.FullName); err != nil {
+		http.Redirect(w, r, "/register?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+	if err := validateUsername(formData.Username); err != nil {
+		http.Redirect(w, r, "/register?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+	if err := validateEmail(formData.Email); err != nil {
+		http.Redirect(w, r, "/register?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+	if err := validatePassword(formData.Password); err != nil {
+		http.Redirect(w, r, "/register?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 
 	if err := insertUser(formData.FullName, formData.Username, formData.Email, formData.Password, formData.ConfirmPassword); err != nil {
-		httpError(w, http.StatusBadRequest)
+		http.Redirect(w, r, "/register?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/login?success="+url.QueryEscape("Compte créé avec succès"), http.StatusSeeOther)
 }
 
 func handleLogout(w http.ResponseWriter, r *http.Request) {

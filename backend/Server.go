@@ -112,14 +112,22 @@ func showIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Récupère tous les commentaires en 1 seule requête au lieu de N requêtes (N+1 fix)
+	postIDs := make([]int, len(posts))
+	for i, p := range posts {
+		postIDs[i] = p.ID
+	}
+	commentsByPost, err := getCommentsByPostIDs(postIDs)
+	if err != nil {
+		log.Println("Erreur lors de la récupération des commentaires:", err)
+		serverError(w)
+		return
+	}
 	for i := range posts {
-		comments, err := getComments(posts[i].ID, currentUserID)
-		if err != nil {
-			log.Println("Erreur lors de la récupération des commentaires:", err)
-			serverError(w)
-			return
+		posts[i].Comments = commentsByPost[posts[i].ID]
+		if posts[i].Comments == nil {
+			posts[i].Comments = []Comment{}
 		}
-		posts[i].Comments = comments
 	}
 
 	data := IndexData{Posts: posts}

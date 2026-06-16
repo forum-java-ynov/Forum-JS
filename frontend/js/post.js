@@ -75,7 +75,41 @@ function resetFilter() {
     window.location.href = "/";
 }
 
+// Toast notification system
+function showToast(message, type = "info", duration = 4000) {
+    const container = document.getElementById("toast-container");
+    if (!container) return;
+
+    const toast = document.createElement("div");
+    toast.className = "toast toast-" + type;
+    toast.textContent = message;
+    toast.addEventListener("click", () => {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateX(100%)";
+        setTimeout(() => toast.remove(), 300);
+    });
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateX(100%)";
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+// Check URL params for toast messages on page load
 document.addEventListener("DOMContentLoaded", () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("success")) {
+        showToast(params.get("success"), "success");
+        window.history.replaceState({}, "", window.location.pathname);
+    }
+    if (params.get("error")) {
+        showToast(params.get("error"), "error");
+        window.history.replaceState({}, "", window.location.pathname);
+    }
+
     const actionForms = document.querySelectorAll('form[action^="/db/toggle_like"], form[action^="/db/toggle_dislike"], form[action^="/db/toggle_comment_like"], form[action^="/db/toggle_comment_dislike"], form[action^="/db/delete_post"], form[action*="edit"]');
 
     actionForms.forEach(form => {
@@ -96,13 +130,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 if (response.ok) {
                     location.reload();
+                } else if (response.status === 401) {
+                    showToast("Vous devez être connecté pour effectuer cette action", "error");
+                } else if (response.status === 403) {
+                    showToast("Vous n'avez pas les droits pour effectuer cette action", "error");
+                } else if (response.status === 404) {
+                    showToast("Élément introuvable", "error");
                 } else {
-                    console.error("Erreur HTTP:", response.status);
-                    alert("Erreur lors de la modification. Le serveur a renvoyé le code : " + response.status + "\n\nAvez-vous bien ajouté la route /api/edit-post dans votre code Go ?");
+                    showToast("Erreur lors de l'action (code " + response.status + ")", "error");
                 }
             } catch (error) {
                 console.error("Erreur de réseau :", error);
-                alert("Erreur de réseau. Le serveur Go est-il bien lancé ?");
+                showToast("Erreur de réseau. Le serveur est-il bien lancé ?", "error");
             }
         });
     });

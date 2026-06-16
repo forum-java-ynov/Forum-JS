@@ -5,13 +5,15 @@ import (
 	"errors"
 	"net/http"
 	"os"
-
+	"encoding/gob"
 	"github.com/gorilla/sessions"
 )
 
 var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
 
 func init() {
+	gob.Register(0)
+
 	store.Options = &sessions.Options{
 		Path:     "/",
 		HttpOnly: true,
