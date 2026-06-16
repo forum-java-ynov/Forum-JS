@@ -1,0 +1,15 @@
+services:
+  forum:
+    container_name: forum-js
+    build: . # Build l'image
+    restart: unless-stopped
+    ports:
+      - "8082:8082" # Expose le port 8082 du conteneur
+    environment:
+      - ENV=production # Active le mode production dans l'app Go
+      - PORT=8082 # Port
+    volumes:
+      - ./database:/app/database
+      - ./uploads:/app/uploads
+    env_file:
+      - .env
