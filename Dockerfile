@@ -23,8 +23,6 @@ FROM alpine:3.24
 
 RUN apk add --no-cache wget
 
-RUN apk add --no-cache wget
-
 WORKDIR /app
 
 # Copie uniquement le binaire compilé depuis le stage builder
