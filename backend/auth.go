@@ -12,9 +12,8 @@ import (
 	"strings"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-
 	"golang.org/x/oauth2/github"
+	"golang.org/x/oauth2/google"
 )
 
 type LoginData struct {
@@ -53,12 +52,11 @@ var googleOauthConfig = &oauth2.Config{
 	Endpoint:     google.Endpoint,
 }
 
-//github
-
+// github
 type GitHubUserInfo struct {
 	ID        int    `json:"id"`
-	Login     string `json:"login"` // Nom d'utilisateur GitHub
-	Name      string `json:"name"`  // Nom complet
+	Login     string `json:"login"`
+	Name      string `json:"name"`
 	Email     string `json:"email"`
 	AvatarURL string `json:"avatar_url"`
 }
@@ -160,9 +158,22 @@ func login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sessionToken, err := generateStateToken()
+	if err != nil {
+		serverError(w)
+		return
+	}
+	if err := setUserSession(user.ID, sessionToken); err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
 	session.Values["user_id"] = user.ID
 	session.Values["user_email"] = user.Email
 	session.Values["user_name"] = user.FullName
+	session.Values["session_token"] = sessionToken
+
 	if err := session.Save(r, w); err != nil {
 		log.Println(err)
 		serverError(w)
@@ -208,12 +219,18 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 		serverError(w)
 		return
 	}
+
+	if userID, ok := session.Values["user_id"].(int); ok {
+		deleteUserSession(userID)
+	}
+
 	session.Options.MaxAge = -1
 	if err := session.Save(r, w); err != nil {
 		log.Println(err)
 		serverError(w)
 		return
 	}
+
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
@@ -309,6 +326,17 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sessionToken, err := generateStateToken()
+	if err != nil {
+		serverError(w)
+		return
+	}
+	if err := setUserSession(user.ID, sessionToken); err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
 	displayName := userInfo.Name
 	if displayName == "" {
 		displayName = userInfo.Email
@@ -319,6 +347,7 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	session.Values["user_email"] = user.Email
 	session.Values["user_name"] = displayName
 	session.Values["user_picture"] = userInfo.Picture
+	session.Values["session_token"] = sessionToken
 
 	if err := session.Save(r, w); err != nil {
 		log.Println(err)
@@ -464,11 +493,23 @@ func handleGitHubCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sessionToken, err := generateStateToken()
+	if err != nil {
+		serverError(w)
+		return
+	}
+	if err := setUserSession(user.ID, sessionToken); err != nil {
+		log.Println(err)
+		serverError(w)
+		return
+	}
+
 	delete(session.Values, "oauth_state")
 	session.Values["user_id"] = user.ID
 	session.Values["user_email"] = user.Email
 	session.Values["user_name"] = userInfo.Name
 	session.Values["user_picture"] = userInfo.AvatarURL
+	session.Values["session_token"] = sessionToken
 
 	if err := session.Save(r, w); err != nil {
 		log.Println(err)
@@ -509,7 +550,6 @@ func fetchGitHubUserInfo(token *oauth2.Token) (*GitHubUserInfo, error) {
 		}
 	}
 
-	// if no name, use username
 	if userInfo.Name == "" {
 		userInfo.Name = userInfo.Login
 	}

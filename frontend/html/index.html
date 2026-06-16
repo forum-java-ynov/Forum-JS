@@ -115,10 +115,10 @@
                                     {{ end }}
                                     <div class="reaction-bar">
                                         <form action="/db/toggle_like?id={{ .ID }}" method="post">
-                                            <button class="reaction-pill reaction-like">👍 <span id="post-like-{{ .ID }}">{{ .Likes }}</span></button>
+                                            <button class="reaction-pill reaction-like{{ if .UserLiked }} active{{ end }}">👍 <span id="post-like-{{ .ID }}">{{ .Likes }}</span></button>
                                         </form>
                                         <form action="/db/toggle_dislike?id={{ .ID }}" method="post">
-                                            <button class="reaction-pill reaction-dislike">👎 <span id="post-dislike-{{ .ID }}">{{ .Dislikes }}</span></button>
+                                            <button class="reaction-pill reaction-dislike{{ if .UserDisliked }} active{{ end }}">👎 <span id="post-dislike-{{ .ID }}">{{ .Dislikes }}</span></button>
                                         </form>
                                     </div>
 
@@ -139,10 +139,10 @@
                                                     <p>{{ .Content }}</p>
                                                     <div class="comment-reactions">
                                                         <form action="/db/toggle_comment_like?id={{ .ID }}" method="post">
-                                                            <button class="reaction-pill reaction-like">👍 <span id="comment-like-{{ .ID }}">{{ .Likes }}</span></button>
+                                                            <button class="reaction-pill reaction-like{{ if .UserLiked }} active{{ end }}">👍 <span id="comment-like-{{ .ID }}">{{ .Likes }}</span></button>
                                                         </form>
                                                         <form action="/db/toggle_comment_dislike?id={{ .ID }}" method="post">
-                                                            <button class="reaction-pill reaction-dislike">👎 <span id="comment-dislike-{{ .ID }}">{{ .Dislikes }}</span></button>
+                                                            <button class="reaction-pill reaction-dislike{{ if .UserDisliked }} active{{ end }}">👎 <span id="comment-dislike-{{ .ID }}">{{ .Dislikes }}</span></button>
                                                         </form>
                                                         <button type="button" onclick="showEditForm('{{ .ID }}')">Edit</button>
                                                         <form action="/db/delete_comment" method="post">

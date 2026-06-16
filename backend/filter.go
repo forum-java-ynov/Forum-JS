@@ -2,6 +2,7 @@ package backend
 
 import (
 	"database/sql"
+	"strings"
 )
 
 // getFilteredPosts returns posts filtered by optional theme and/or liked-by-user criteria.
@@ -10,22 +11,25 @@ import (
 // hispost: if true, only posts created by this user are returned
 func getFilteredPosts(theme string, userID int, likedOnly bool, hispost bool) ([]Post, error) {
 	query := `
-		SELECT 
-			posts.id,
-			posts.title,
-			posts.content,
-			posts.image_path,
-			posts.theme,
-			COALESCE(users.full_name, users.username, 'Utilisateur'),
-			COUNT(DISTINCT pl_all.id) as likes,
-			COUNT(DISTINCT pd_all.id) as dislikes
-		FROM posts
-		LEFT JOIN users ON posts.user_id = users.id
-		LEFT JOIN post_like pl_all ON posts.id = pl_all.post_id
-		LEFT JOIN post_dislike pd_all ON posts.id = pd_all.post_id
-	`
+       SELECT 
+          posts.id,
+          posts.title,
+          posts.content,
+          posts.image_path,
+          posts.theme,
+          COALESCE(users.full_name, users.username, 'Utilisateur'),
+          COUNT(DISTINCT pl_all.id) as likes,
+          COUNT(DISTINCT pd_all.id) as dislikes,
+          MAX(CASE WHEN pl_all.user_id = ? THEN 1 ELSE 0 END) as user_liked,
+          MAX(CASE WHEN pd_all.user_id = ? THEN 1 ELSE 0 END) as user_disliked
+       FROM posts
+       LEFT JOIN users ON posts.user_id = users.id
+       LEFT JOIN post_like pl_all ON posts.id = pl_all.post_id
+       LEFT JOIN post_dislike pd_all ON posts.id = pd_all.post_id
+    `
+
+	args := []interface{}{userID, userID}
 	var conditions []string
-	var args []interface{}
 
 	if theme != "" {
 		conditions = append(conditions, "posts.theme = ?")
@@ -43,13 +47,7 @@ func getFilteredPosts(theme string, userID int, likedOnly bool, hispost bool) ([
 	}
 
 	if len(conditions) > 0 {
-		query += " WHERE "
-		for i, cond := range conditions {
-			if i > 0 {
-				query += " AND "
-			}
-			query += cond
-		}
+		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 
 	query += " GROUP BY posts.id"
@@ -65,17 +63,20 @@ func getFilteredPosts(theme string, userID int, likedOnly bool, hispost bool) ([
 		var id, likes, dislikes int
 		var title, content, themeVal, username string
 		var imagePath sql.NullString
-		if err := rows.Scan(&id, &title, &content, &imagePath, &themeVal, &username, &likes, &dislikes); err != nil {
+		var userLiked, userDisliked bool
+		if err := rows.Scan(&id, &title, &content, &imagePath, &themeVal, &username, &likes, &dislikes, &userLiked, &userDisliked); err != nil {
 			return nil, err
 		}
 		post := Post{
-			ID:       id,
-			Title:    title,
-			Content:  content,
-			Theme:    themeVal,
-			Username: username,
-			Likes:    likes,
-			Dislikes: dislikes,
+			ID:           id,
+			Title:        title,
+			Content:      content,
+			Theme:        themeVal,
+			Username:     username,
+			Likes:        likes,
+			Dislikes:     dislikes,
+			UserLiked:    userLiked,
+			UserDisliked: userDisliked,
 		}
 		if imagePath.Valid {
 			post.ImagePath = imagePath.String

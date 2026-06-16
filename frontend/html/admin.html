@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="/css/Index.css?v=4">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+<nav>
+    <ul>
+        <li><a href="/">← Forum</a></li>
+        <li id="nav-user" class="nav-user" style="display:none;">
+            <span id="nav-name"></span>
+        </li>
+        <li id="nav-logout" style="display:none;">
+            <a href="/auth/logout">Log out</a>
+        </li>
+    </ul>
+</nav>
+
+<main class="admin-main">
+
+    <div class="admin-hero">
+        <p class="hero-eyebrow">Administration</p>
+        <h1>Admin Panel</h1>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Utilisateurs</div>
+            <div class="stat-value">{{ .Stats.TotalUsers }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Posts</div>
+            <div class="stat-value">{{ .Stats.TotalPosts }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Commentaires</div>
+            <div class="stat-value">{{ .Stats.TotalComments }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Likes</div>
+            <div class="stat-value">{{ .Stats.TotalLikes }}</div>
+        </div>
+    </div>
+
+    <!-- Users -->
+    <div class="admin-section">
+        <p class="admin-section-title">Utilisateurs</p>
+        {{ if .Users }}
+        <table>
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Rôle</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {{ range .Users }}
+            <tr>
+                <td>{{ .ID }}</td>
+                <td>{{ .Username }}</td>
+                <td>{{ .Email }}</td>
+                <td>
+                    {{ if eq .Role "admin" }}
+                    <span class="badge badge-admin">admin</span>
+                    {{ else }}
+                    <span class="badge badge-user">user</span>
+                    {{ end }}
+                </td>
+                <td>
+                    <div class="row-actions">
+                        <form action="/admin/promote_user" method="post">
+                            <input type="hidden" name="id" value="{{ .ID }}">
+                            <button class="btn-promote" type="submit">
+                                {{ if eq .Role "admin" }}Rétrograder{{ else }}Promouvoir{{ end }}
+                            </button>
+                        </form>
+                        <form action="/admin/delete_user" method="post">
+                            <input type="hidden" name="id" value="{{ .ID }}">
+                            <button class="btn-delete-sm" type="submit"
+                                    onclick="return confirm('Supprimer {{ .Username }} et tout son contenu ?')">
+                                Supprimer
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {{ end }}
+            </tbody>
+        </table>
+        {{ else }}
+        <p class="empty-state">Aucun utilisateur.</p>
+        {{ end }}
+    </div>
+
+    <!-- Posts -->
+    <div class="admin-section">
+        <p class="admin-section-title">Posts</p>
+        {{ if .Posts }}
+        <table>
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Titre</th>
+                <th>Auteur</th>
+                <th>Thème</th>
+                <th>👍</th>
+                <th>👎</th>
+                <th>💬</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {{ range .Posts }}
+            <tr>
+                <td>{{ .ID }}</td>
+                <td>{{ .Title }}</td>
+                <td>{{ .Username }}</td>
+                <td><span class="theme-tag">{{ .Theme }}</span></td>
+                <td>{{ .Likes }}</td>
+                <td>{{ .Dislikes }}</td>
+                <td>{{ .Comments }}</td>
+                <td>
+                    <form action="/admin/delete_post" method="post">
+                        <input type="hidden" name="id" value="{{ .ID }}">
+                        <button class="btn-delete-sm" type="submit"
+                                onclick="return confirm('Supprimer ce post ?')">
+                            Supprimer
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {{ end }}
+            </tbody>
+        </table>
+        {{ else }}
+        <p class="empty-state">Aucun post.</p>
+        {{ end }}
+    </div>
+
+</main>
+
+<script src="/js/oauth.js"></script>
+<script src="/js/post.js"></script>
+</body>
+</html>
